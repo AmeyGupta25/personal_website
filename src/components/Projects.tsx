@@ -4,21 +4,27 @@ import { useRef } from "react";
 const projects = [
   {
     title: "StockPulse Analytics",
-    category: "Python · SQL · D3.js · FastAPI",
-    color: "hsl(207 28% 88%)",
-    description: "End-to-end pipeline ingesting real-time stock and Reddit sentiment data with an interactive D3.js dashboard.",
+    category: "Python · FastAPI · XGBoost · PostgreSQL · Plotly.js",
+    image: "/stockpulse.png",
+    description: "Full-stack data engineering and ML project that tracks real-time stock prices, analyzes news sentiment with VADER, and predicts next-day price direction using XGBoost — served through a live REST API and interactive dashboard.",
+    link: "https://github.com/AmeyGupta25/stockpulse",
+    live: "https://ameygupta25.github.io/stockpulse/index.html",
   },
   {
-    title: "Project Two",
-    category: "Category · Tech · Stack",
-    color: "hsl(40 20% 88%)",
-    description: "Brief description of this project — what it does and why it matters.",
+    title: "UCSD ProfAI",
+    category: "Python · FastAPI · React · Pinecone · LLaMA 3.3",
+    image: "/rmp-rag.png",
+    description: "AI-powered chatbot for UCSD students to ask natural language questions about professors, grounded in 7,565 real Rate My Professor reviews using a RAG pipeline with Pinecone vector search and Groq's LLaMA 3.3 70B.",
+    link: "https://github.com/AmeyGupta25/rmp-rag",
+    live: "https://rmp-rag-ten.vercel.app",
   },
   {
-    title: "Project Three",
-    category: "Category · Tech · Stack",
-    color: "hsl(30 15% 88%)",
-    description: "Brief description of this project — what it does and why it matters.",
+    title: "Personal Website",
+    category: "React · TypeScript · Tailwind CSS · Vite · shadcn/ui",
+    image: "/portfolio.png",
+    description: "Personal portfolio designed and built from scratch to showcase projects, skills, and experience — featuring smooth animations, a fully responsive layout, and deployment via Vercel with a custom domain.",
+    link: "https://github.com/AmeyGupta25/personal_website",
+    live: "https://ameygupta.com",
   },
 ];
 
@@ -44,19 +50,18 @@ const ProjectCard = ({
         ease: [0.22, 1, 0.36, 1],
       }}
     >
-      <div
-        className="overflow-hidden rounded-sm mb-4 aspect-[4/3] group-hover:shadow-lg group-hover:-translate-y-1 transition-all duration-300"
-        data-cursor-hover
-      >
+      <a href={project.live} target="_blank" rel="noopener noreferrer">
         <div
-          className="w-full h-full flex items-center justify-center group-hover:scale-105 transition-transform duration-500 p-8"
-          style={{ backgroundColor: project.color }}
+          className="overflow-hidden rounded-sm mb-4 aspect-[4/3] group-hover:shadow-lg group-hover:-translate-y-1 transition-all duration-300"
+          data-cursor-hover
         >
-          <span className="font-display text-3xl text-foreground/20 text-center">
-            {project.title}
-          </span>
+          <img
+            src={project.image}
+            alt={project.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          />
         </div>
-      </div>
+      </a>
       <h3 className="font-display text-lg md:text-xl font-medium text-foreground">
         {project.title}
       </h3>
@@ -66,6 +71,24 @@ const ProjectCard = ({
       <p className="font-body text-sm text-muted-foreground mt-2 leading-relaxed">
         {project.description}
       </p>
+      <div className="flex gap-4 mt-3">
+        
+          href={project.link}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-body text-xs tracking-[0.1em] uppercase text-foreground underline underline-offset-4 hover:text-accent transition-colors"
+        >
+          GitHub
+        </a>
+        
+          href={project.live}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-body text-xs tracking-[0.1em] uppercase text-foreground underline underline-offset-4 hover:text-accent transition-colors"
+        >
+          Live Site
+        </a>
+      </div>
     </motion.div>
   );
 };
