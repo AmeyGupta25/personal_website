@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 45 14% 97%;
+    --foreground: 0 0% 10%;
+
+    --card: 45 14% 97%;
+    --card-foreground: 0 0% 10%;
+
+    --popover: 45 14% 97%;
+    --popover-foreground: 0 0% 10%;
+
+    --primary: 207 28% 40%;
+    --primary-foreground: 45 14% 97%;
+
+    --secondary: 40 10% 92%;
+    --secondary-foreground: 0 0% 10%;
+
+    --muted: 40 10% 92%;
+    --muted-foreground: 0 0% 45%;
+
+    --accent: 207 28% 40%;
+    --accent-foreground: 45 14% 97%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 45 14% 97%;
+
+    --border: 40 10% 88%;
+    --input: 40 10% 88%;
+    --ring: 207 28% 40%;
+
+    --radius: 0.25rem;
+
+    --font-display: 'Playfair Display', serif;
+    --font-body: 'Space Grotesk', sans-serif;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    cursor: none !important;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+  }
+
+  ::selection {
+    background: hsl(207 28% 40% / 0.2);
+    color: hsl(0 0% 10%);
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: var(--font-display);
+  }
+
+  .font-body {
+    font-family: var(--font-body);
+  }
+
+  .text-accent-link {
+    color: hsl(var(--accent));
+  }
+
+  .bg-warm {
+    background-color: hsl(var(--background));
+  }
+}
