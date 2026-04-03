@@ -46,9 +46,6 @@ const experiences = [
 const ExperienceCard = ({
   exp,
   index
-
-
-
 }: {exp: (typeof experiences)[0];index: number;}) => {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
@@ -57,8 +54,8 @@ const ExperienceCard = ({
   return (
     <div
       ref={ref}
-      className={`relative flex items-start ${isLeft ? "md:flex-row-reverse" : ""} gap-0 md:gap-8`}>
-      
+      className={`relative flex items-start ${isLeft ? "md:flex-row-reverse" : ""} gap-0 md:gap-8`}
+    >
       <motion.div
         className="w-full md:w-[calc(50%-2rem)]"
         initial={{ opacity: 0, x: isLeft ? 60 : -60 }}
