@@ -52,7 +52,7 @@ const ProjectCard = ({
     >
       <a href={project.live} target="_blank" rel="noopener noreferrer">
         <div
-          className="overflow-hidden rounded-sm mb-4 aspect-[4/3] group-hover:shadow-lg group-hover:-translate-y-1 transition-all duration-300"
+          className="overflow-hidden rounded-sm mb-4 aspect-[4/3] group-hover:shadow-lg group-hover:-translate-y-1 transition-all duration-300 border border-gray-200 shadow-sm"
           data-cursor-hover
         >
           <img
