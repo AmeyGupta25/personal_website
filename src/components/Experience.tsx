@@ -10,8 +10,8 @@ const experiences = [
   period: "Oct 2025 — Feb 2026",
   location: "Ridgewood, NJ",
   bullets: [
-  "Scraped and normalized 10,000+ financial records from 70+ sources (SEC filings, business registries) into structured CSV/JSON using Python, BeautifulSoup, and Selenium, cutting retrieval errors by 20%",
-  "Built ETL pipelines integrating 15+ APIs and government portals into a centralized PostgreSQL repository, cutting manual data collection time by 30% to power a custom AI tool for debt-focused closed-end funds",
+  "Scraped and normalized 10,000+ financial records from 70+ sources into structured CSV/JSON, cutting retrieval errors by 20%",
+  "Built ETL pipelines integrating 15+ APIs into a centralized PostgreSQL repository, reducing manual data collection time by 30%",
   "Validated 50+ data fields via SQLAlchemy ORM, maintaining 95%+ data integrity across diverse financial feeds"]
 
 },
@@ -23,9 +23,9 @@ const experiences = [
   period: "Apr 2025 — Dec 2025",
   location: "San Diego, CA",
   bullets: [
-  "Built a SQL analytics pipeline tracking recruiting metrics across 30+ member cycles, visualized through 5 Power BI dashboards to monitor application-to-interview conversion rates and hiring funnel performance",
-  "Defined 8 KPIs with leadership including time-to-fill, candidate quality, and acceptance rate, improving recruiting efficiency and member retention across 3 consecutive recruitment cycles",
-  "Delivered 10+ recruiting reports to a 15-person executive board, reducing time-to-fill by 20% and improving candidate acceptance rates across the organization"]
+  "Built a SQL analytics pipeline tracking recruiting metrics across 30+ member cycles, visualized through 5 Power BI dashboards",
+  "Defined 8 KPIs with leadership including time-to-fill, candidate quality, and acceptance rate, improving recruiting efficiency across 3 cycles",
+  "Delivered 10+ recruiting reports to a 15-person executive board, reducing time-to-fill by 20% and improving candidate acceptance rates"]
 
 },
 {
@@ -36,9 +36,9 @@ const experiences = [
   period: "Jun 2025 — Sep 2025",
   location: "San Ramon, CA",
   bullets: [
-  "Engineered 2 proof-of-concept prototypes using Flask microservices, collaborating with a 5-person engineering team on technical documentation and release support, reducing leadership review cycles by 20%",
-  "Identified performance gaps across 8+ APIs and frameworks through technical evaluation and gap analysis, contributing to a 15% improvement in website performance and guiding strategic product direction",
-  "Delivered competitive analysis across 10+ competitors to C-suite leadership, surfacing data-driven recommendations that influenced 3 key product roadmap decisions and strengthened market positioning"]
+  "Engineered 2 proof-of-concept prototypes using Flask microservices, reducing leadership review cycles by 20%",
+  "Identified performance gaps across 8+ APIs and frameworks, contributing to a 15% improvement in website performance",
+  "Delivered competitive analysis across 10+ competitors to C-suite, influencing 3 key product roadmap decisions"]
 
 }];
 
