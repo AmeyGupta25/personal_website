@@ -36,8 +36,8 @@ const Navigation = () => {
             <nav className="flex items-center gap-8 font-body text-sm tracking-widest uppercase">
               <a href="#about" className="text-[#3A3A3A] hover:text-accent transition-colors">About</a>
               <a href="#projects" className="text-[#3A3A3A] hover:text-accent transition-colors">Projects</a>
-              <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="text-[#3A3A3A] hover:text-accent transition-colors">LinkedIn</a>
-              <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="text-[#3A3A3A] hover:text-accent transition-colors">GitHub</a>
+              <a href="https://linkedin.com/in/ameygupta25" target="_blank" rel="noopener noreferrer" className="text-[#3A3A3A] hover:text-accent transition-colors">LinkedIn</a>
+              <a href="https://github.com/AmeyGupta25" target="_blank" rel="noopener noreferrer" className="text-[#3A3A3A] hover:text-accent transition-colors">GitHub</a>
             </nav>
           </motion.header>
         )}
