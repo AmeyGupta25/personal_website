@@ -35,7 +35,7 @@ const About = () => {
         initial={{ opacity: 0, y: 30 }}
         animate={inView ? { opacity: 1, y: 0 } : {}}
         transition={{ duration: 0.6, delay: 0.3 }}>
-        Outside of work I lift weights, play guitar (mostly alt/indie and classic rock), and cook.
+        Outside of work I like to weightlift, play guitar (mostly alt/indie and classic rock), and try new foods.
       </motion.p>
     </section>
   );
