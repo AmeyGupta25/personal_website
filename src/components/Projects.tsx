@@ -52,7 +52,7 @@ const ProjectCard = ({
     >
       <a href={project.live} target="_blank" rel="noopener noreferrer">
         <div
-          className="overflow-hidden rounded-sm mb-4 aspect-[4/3] group-hover:shadow-lg group-hover:-translate-y-1 transition-all duration-300 border border-gray-200 shadow-sm"
+          className="overflow-hidden rounded-sm mb-4 aspect-[4/3] group-hover:shadow-lg group-hover:-translate-y-1 transition-all duration-300 border border-gray-200 shadow-md relative"
           data-cursor-hover
         >
           <img
@@ -60,6 +60,7 @@ const ProjectCard = ({
             alt={project.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
+          <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.0) 55%)" }} />
         </div>
       </a>
       <h3 className="font-display text-lg md:text-xl font-medium text-foreground">
