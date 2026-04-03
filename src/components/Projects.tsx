@@ -72,7 +72,7 @@ const ProjectCard = ({
         {project.description}
       </p>
       <div className="flex gap-4 mt-3">
-        
+        <a
           href={project.link}
           target="_blank"
           rel="noopener noreferrer"
@@ -80,7 +80,7 @@ const ProjectCard = ({
         >
           GitHub
         </a>
-        
+        <a
           href={project.live}
           target="_blank"
           rel="noopener noreferrer"
