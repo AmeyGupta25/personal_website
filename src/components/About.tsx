@@ -12,7 +12,6 @@ const About = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={inView ? { opacity: 1, y: 0 } : {}}
         transition={{ duration: 0.6 }}>
-        
         About
       </motion.p>
       <motion.h2
@@ -20,22 +19,26 @@ const About = () => {
         initial={{ opacity: 0, y: 30 }}
         animate={inView ? { opacity: 1, y: 0 } : {}}
         transition={{ duration: 0.6, delay: 0.1 }}>
-        
-        ​Hi, I'm Amey.    
+        Hi, I'm Amey.
       </motion.h2>
       <motion.p
         className="font-body text-base md:text-lg text-muted-foreground leading-relaxed mb-6"
         initial={{ opacity: 0, y: 30 }}
         animate={inView ? { opacity: 1, y: 0 } : {}}
         transition={{ duration: 0.6, delay: 0.2 }}>
-        
-        I'm a Data Science student at UC San Diego with hands-on experience in data engineering, 
-        product management, and full-stack development. I build ETL pipelines, analytics dashboards, 
-        and proof-of-concept prototypes — always focused on turning messy, real-world data into 
-        structured, actionable insight.
+        I'm a Data Science student at UC San Diego with experience in data engineering, 
+        full-stack development, and technical product management. I have startup and enterprise 
+        experience across multiple internships, and I enjoy building things outside of class too.
       </motion.p>
-    </section>);
-
+      <motion.p
+        className="font-body text-base md:text-lg text-muted-foreground leading-relaxed"
+        initial={{ opacity: 0, y: 30 }}
+        animate={inView ? { opacity: 1, y: 0 } : {}}
+        transition={{ duration: 0.6, delay: 0.3 }}>
+        Outside of work I lift weights, play guitar (mostly alt/indie and classic rock), and cook.
+      </motion.p>
+    </section>
+  );
 };
 
 export default About;
