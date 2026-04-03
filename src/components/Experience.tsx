@@ -68,8 +68,7 @@ const ExperienceCard = ({
           <div className="flex items-center gap-2 mt-1 flex-wrap">
             
               href={exp.url}
-              className="font-body text-sm text-accent hover:underline"
-            >
+              className="font-body text-sm text-accent hover:underline">
               {exp.company}
             </a>
           </div>
