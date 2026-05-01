@@ -36,7 +36,7 @@ const experiences = [
   period: "Jun 2025 — Sep 2025",
   location: "San Ramon, CA",
   bullets: [
-  "Engineered 2 proof-of-concept prototypes using Flask microservices, reducing leadership review cycles by 20%",
+  "Developed 2 proof-of-concept prototypes  integrating semantic AI and knowledge graph APIs, reducing leadership review cycles by 20%",
   "Identified performance gaps across 8+ APIs and frameworks, contributing to a 15% improvement in website performance",
   "Delivered competitive analysis across 10+ competitors to C-suite, influencing 3 key product roadmap decisions"]
 
