@@ -92,10 +92,22 @@ const SqlEditor = ({
       live = false;
     };
   }, [fontsReady]);
-  const { typed, done } = useTypewriter(typeIn && fontsReady ? value : "", {
-    step: 1,
-    tick: 15,
-  });
+  const { typed, done, finish } = useTypewriter(
+    typeIn && fontsReady ? value : "",
+    { step: 1, tick: 15 },
+  );
+  // no one has to wait for the opening query: any click or key press finishes it at once
+  const typing = typeIn && !done;
+  useEffect(() => {
+    if (!typing) return;
+    const skip = () => finish();
+    window.addEventListener("pointerdown", skip, { once: true });
+    window.addEventListener("keydown", skip, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", skip);
+      window.removeEventListener("keydown", skip);
+    };
+  }, [typing, finish]);
   useEffect(() => {
     if (typeIn && fontsReady && done) onTyped?.();
     // fires once, when the opening query finishes typing

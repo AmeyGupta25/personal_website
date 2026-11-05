@@ -30,8 +30,8 @@ const byFrequency = (values: string[]) => {
 
 // skills sorted into the résumé's own categories; anything uncategorised lands in the last section
 const SKILL_SECTIONS: [string, string[]][] = [
-  ["Languages", ["Python", "SQL", "JavaScript", "Cython", "R", "Bash", "JSON"]],
-  ["Data & ML", ["LLMs", "AI", "Embeddings", "Pandas", "NumPy", "scikit-learn", "PyTorch", "XGBoost", "VADER", "Bayesian modelling", "Clustering", "Airflow", "dbt", "Databricks", "BeautifulSoup", "Selenium"]],
+  ["Languages", ["Python", "SQL", "JavaScript", "Cython", "R", "Bash"]],
+  ["Data & ML", ["LLMs", "Embeddings", "Pandas", "NumPy", "scikit-learn", "PyTorch", "XGBoost", "VADER", "Bayesian modelling", "Clustering", "Airflow", "dbt", "Databricks", "BeautifulSoup", "Selenium"]],
   ["Databases", ["PostgreSQL", "MySQL", "Pinecone", "SQLAlchemy", "Drizzle ORM", "Database indexing"]],
   ["Cloud & infra", ["AWS", "Cloudflare", "Cloudflare Workers", "Cloudflare Hyperdrive", "Docker", "Kubernetes", "Linux", "CI/CD", "Vercel"]],
   ["Frameworks & APIs", ["FastAPI", "Flask", "React", "Hono", "OpenAPI", "REST APIs", "Groq", "SEC EDGAR API", "ROR API"]],

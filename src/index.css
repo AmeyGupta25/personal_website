@@ -84,6 +84,7 @@
     --wh-link: 11 87 208;
   }
   [data-theme="nightshift"] {
+    color-scheme: dark;
     --wh-err: 255 138 128;
     --wh-paper: 15 17 21;
     --wh-ink: 237 238 240;

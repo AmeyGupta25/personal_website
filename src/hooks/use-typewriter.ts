@@ -1,8 +1,12 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-/** Reveals `text` a few characters per tick; `done` turns true once it's all shown. */
+const prefersReducedMotion = () =>
+  typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+/** Reveals `text` a few characters per tick; `done` turns true once it's all shown.
+    `finish` shows the rest at once. With reduced motion the text appears whole. */
 export function useTypewriter(text: string, { step = 2, tick = 16 } = {}) {
-  const [shown, setShown] = useState(0);
+  const [shown, setShown] = useState(() => (prefersReducedMotion() ? Infinity : 0));
   const done = shown >= text.length;
 
   useEffect(() => {
@@ -11,5 +15,6 @@ export function useTypewriter(text: string, { step = 2, tick = 16 } = {}) {
     return () => clearTimeout(id);
   }, [shown, done, text.length, step, tick]);
 
-  return { typed: text.slice(0, shown), done };
+  const finish = useCallback(() => setShown(Infinity), []);
+  return { typed: text.slice(0, shown), done, finish };
 }

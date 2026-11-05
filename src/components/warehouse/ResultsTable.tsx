@@ -1,6 +1,6 @@
 import { Fragment } from "react";
 import { ArrowUpDown, ArrowUpRight, ChevronDown } from "lucide-react";
-import { period, yearsActive, type WorkRow } from "@/data/work";
+import { label as monthText, period, yearsActive, type WorkRow, type YearMonth } from "@/data/work";
 import type { Column } from "@/lib/sql";
 import type { SortKey } from "@/lib/warehouse";
 
@@ -25,7 +25,7 @@ interface Props {
 
 const Sortable = ({ label, active, onClick, ariaSort, className = "" }: { label: string; active: boolean; onClick: () => void; ariaSort: "ascending" | "descending" | "none"; className?: string }) => (
   <th aria-sort={ariaSort} className={`border-b-4 border-wh-ink p-0 text-left ${className}`}>
-    <button type="button" onClick={onClick} className={`flex w-full items-center gap-1.5 px-3 py-2.5 text-[12px] font-bold uppercase tracking-[0.1em] hover:bg-wh-soft ${active ? "" : "text-wh-ink"}`}>
+    <button type="button" onClick={onClick} className="flex w-full items-center gap-1.5 px-3 py-2.5 text-[12px] font-bold uppercase tracking-[0.1em] hover:bg-wh-soft">
       {label}
       <ArrowUpDown className={`h-3.5 w-3.5 ${active ? "text-wh-ink" : "text-wh-mute"}`} aria-hidden />
     </button>
@@ -36,8 +36,7 @@ const LABEL: Record<Column, string> = {
   name: "Name", role: "Role", type: "Type", status: "Status", period: "Period", impact: "Impact", location: "Location",
   started: "Started", ended: "Ended", skills: "Skills", areas: "What I did", years: "Years",
 };
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const monthLabel = (ym: [number, number] | null, open: string) => (ym ? `${MONTHS[ym[1] - 1]} ${ym[0]}` : open);
+const monthLabel = (ym: YearMonth | null, open: string) => (ym ? monthText(ym) : open);
 
 const cell = (r: WorkRow, c: Column) => {
   switch (c) {
@@ -139,6 +138,10 @@ const ResultsTable = ({ rows, columns, standard, sortable, sort, runId, openId, 
                         {c === "name" && (
                           <span className="mt-1.5 block w-fit rounded-full border-[1.5px] border-wh-ink px-2 py-px text-[11px] font-bold uppercase tracking-[0.08em]">{r.type}</span>
                         )}
+                        {/* the one-line summary, so the table reads without opening anything; the open row shows it in full below */}
+                        {c === "name" && standard && !open && (
+                          <span className="mt-2 block max-w-[52ch] text-[14px] font-normal leading-snug tracking-normal text-wh-body md:text-[15px]">{r.plain}</span>
+                        )}
                       </span>
                     </button>
                   </td>
@@ -174,6 +177,11 @@ const ResultsTable = ({ rows, columns, standard, sortable, sort, runId, openId, 
                       </span>
                     ))}
                   </div>
+                  {r.image && (
+                    <a href={r.links?.[0]?.href ?? r.image.src} target="_blank" rel="noopener noreferrer" className="mt-4 block w-full max-w-[480px] overflow-hidden rounded-lg border-2 border-wh-ink">
+                      <img src={r.image.src} alt={r.image.alt} width={1280} height={720} loading="lazy" className="block h-auto w-full" />
+                    </a>
+                  )}
                   {r.links && (
                     <p className="mt-4 flex flex-wrap gap-5">
                       {r.links.map((l) => (

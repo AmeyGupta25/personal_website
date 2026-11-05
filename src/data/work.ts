@@ -25,6 +25,8 @@ export interface WorkRow {
   areas: string[];
   location?: string;
   links?: { label: string; href: string }[];
+  /** A screenshot of the live project, shown in the open row and linked to the first link. */
+  image?: { src: string; alt: string };
 }
 
 export const person = {
@@ -62,7 +64,7 @@ export const rows: WorkRow[] = [
       "Engineered an extraction layer on a locally hosted 20B-parameter LLM (gpt-oss-20b), auto-accepting results at ≥0.85 confidence to minimize manual review while routing structured data across 7 core PostgreSQL tables.",
       "Matched internal records against a production Salesforce instance, sending net-new relationships to a live Power BI dashboard that generated over $2 million in closed sales.",
     ],
-    skills: ["Python", "SQL", "PostgreSQL", "LLMs", "Salesforce", "Power BI", "SEC EDGAR API", "ROR API", "REST APIs", "JavaScript", "MySQL", "Tableau", "BeautifulSoup", "AI"],
+    skills: ["Python", "SQL", "PostgreSQL", "LLMs", "Salesforce", "Power BI", "SEC EDGAR API", "ROR API", "REST APIs", "JavaScript", "MySQL", "Tableau", "BeautifulSoup"],
     areas: ["Data pipelines & ETL", "Databases & warehousing", "Data quality", "AI & LLMs", "Backend & APIs", "Analytics & dashboards"],
   },
   {
@@ -126,6 +128,7 @@ export const rows: WorkRow[] = [
       { label: "Live site", href: "https://rmp-rag-ten.vercel.app" },
       { label: "Source code", href: "https://github.com/AmeyGupta25/rmp-rag" },
     ],
+    image: { src: "/rmp-rag.jpg", alt: "The live UCSD ProfAI app: a chat box for asking questions about UCSD professors, with suggested questions." },
   },
   {
     id: "peale",
@@ -144,7 +147,7 @@ export const rows: WorkRow[] = [
       "Orchestrated scheduled ingestion with Apache Airflow into a centralized PostgreSQL warehouse powering a proprietary fintech AI tool.",
       "Integrated 15+ external APIs with strict SQLAlchemy validation across 50+ fields, keeping data integrity above 95%.",
     ],
-    skills: ["Python", "SQL", "PostgreSQL", "BeautifulSoup", "Selenium", "Docker", "Airflow", "SQLAlchemy", "REST APIs", "Flask", "Databricks", "dbt", "Kubernetes", "Linux", "CI/CD", "JSON"],
+    skills: ["Python", "SQL", "PostgreSQL", "BeautifulSoup", "Selenium", "Docker", "Airflow", "SQLAlchemy", "REST APIs", "Flask", "Databricks", "dbt", "Kubernetes", "Linux", "CI/CD"],
     areas: ["Data pipelines & ETL", "Databases & warehousing", "Data quality", "Backend & APIs"],
   },
   {
@@ -184,7 +187,7 @@ export const rows: WorkRow[] = [
       "Serves everything through a REST API and an interactive dashboard.",
     ],
     skills: ["Python", "FastAPI", "PostgreSQL", "XGBoost", "VADER", "Plotly.js"],
-    areas: ["Machine learning", "AI & LLMs", "Data pipelines & ETL", "Backend & APIs", "Analytics & dashboards"],
+    areas: ["Machine learning", "Data pipelines & ETL", "Backend & APIs", "Analytics & dashboards"],
     links: [
       { label: "Live site", href: "https://ameygupta25.github.io/stockpulse/index.html" },
       { label: "Source code", href: "https://github.com/AmeyGupta25/stockpulse" },
@@ -195,7 +198,7 @@ export const rows: WorkRow[] = [
 // ---------- dates ----------
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 export const monthIndex = ([y, m]: YearMonth) => y * 12 + m - 1;
-const label = (ym: YearMonth) => `${MONTHS[ym[1] - 1]} ${ym[0]}`;
+export const label = (ym: YearMonth) => `${MONTHS[ym[1] - 1]} ${ym[0]}`;
 
 export const period = (r: WorkRow) => {
   if (!r.from) return "—";
