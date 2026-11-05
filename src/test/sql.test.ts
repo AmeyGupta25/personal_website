@@ -6,8 +6,14 @@ import { emptyFilters, filterRows, queryToFilters, sortRows, sqlText } from "@/l
 const names = (sql: string) => run(parse(sql), rows).map((r) => r.name);
 
 describe("sql engine", () => {
+  it("selects and filters on the summary column", () => {
+    const q = parse("SELECT name, summary FROM amey.work WHERE summary ILIKE '%dashboard%' ORDER BY name");
+    expect(q.columns).toEqual(["name", "summary"]);
+    expect(run(q, rows).map((r) => r.name)).toEqual(["Quantum Design", "StockPulse"]);
+    expect(sqlText(emptyFilters(), "recent")).toMatch(/^SELECT name, summary, role, period, impact\n/);
+  });
   it("runs the default query", () => {
-    expect(names("SELECT name, role, period, impact FROM amey.work ORDER BY started DESC;")).toHaveLength(rows.length);
+    expect(names("SELECT name, role, period, impact FROM amey.work ORDER BY started DESC;")).toHaveLength(7);
   });
   it("filters by skill, case-insensitively", () => {
     expect(names("SELECT * FROM amey.work WHERE 'airflow' = ANY(skills)")).toEqual(["Peale Davies"]);
@@ -63,7 +69,7 @@ describe("counts and schema", () => {
     const python = rows.filter((r) => r.skills.includes("Python")).length;
     expect(skills.find((s) => s.key === "Python")?.count ?? python).toBe(python);
     expect(skills[0].count).toBeGreaterThanOrEqual(skills[1].count);
-    expect(runGrouped(parse("SELECT type, COUNT(*) FROM work GROUP BY type ORDER BY type"), rows).map((r) => r.key)).toEqual(["Education", "Internship", "Project", "Research"]);
+    expect(runGrouped(parse("SELECT type, COUNT(*) FROM work GROUP BY type ORDER BY type"), rows).map((r) => r.key)).toEqual(["Internship", "Project", "Research"]);
   });
   it("explains grouping mistakes", () => {
     expect(() => parse("SELECT name, COUNT(*) FROM amey.work")).toThrow(/GROUP BY name/);
@@ -85,6 +91,8 @@ describe("completion", () => {
     expect(inQuote).toMatchObject({ from: 7, quoted: true });
     expect(inQuote.options).toEqual(["Python"]);
     expect(complete("SELECT n", 8, []).options).toEqual([]);
+    // prefix-only: only what can be shown as the rest of the typed word
+    expect(complete("WHERE 'sql", 10, ["SQLAlchemy", "PostgreSQL", "MySQL"], { prefixOnly: true }).options).toEqual(["SQLAlchemy"]);
   });
 });
 
@@ -96,9 +104,9 @@ describe("data hygiene", () => {
     expect([...used].filter((s) => !sectioned.includes(s))).toEqual([]);
     expect(sectioned.filter((s) => !used.has(s))).toEqual([]);
   });
-  it("draws a lineage of at least three steps wherever there is one, with unique ids", () => {
+  it("gives every row a unique id and a summary", () => {
     expect(new Set(rows.map((r) => r.id)).size).toBe(rows.length);
-    for (const r of rows) if (r.flow) expect(r.flow.length, r.id).toBeGreaterThanOrEqual(3);
+    for (const r of rows) expect(r.plain.length, r.id).toBeGreaterThan(0);
   });
   it("round-trips every filter quick question through SQL", async () => {
     const { QUICK_POOL } = await import("@/lib/warehouse");

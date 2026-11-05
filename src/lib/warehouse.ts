@@ -30,8 +30,8 @@ const byFrequency = (values: string[]) => {
 
 // skills sorted into the résumé's own categories; anything uncategorised lands in the last section
 export const SKILL_SECTIONS: [string, string[]][] = [
-  ["Languages", ["Python", "SQL", "JavaScript", "Cython", "R", "Bash"]],
-  ["Data & ML", ["LLMs", "Embeddings", "Pandas", "NumPy", "scikit-learn", "PyTorch", "XGBoost", "VADER", "Bayesian modelling", "Clustering", "Airflow", "dbt", "Databricks", "BeautifulSoup", "Selenium"]],
+  ["Languages", ["Python", "SQL", "JavaScript", "Cython", "R", "Bash", "JSON"]],
+  ["Data & ML", ["LLMs", "AI", "Embeddings", "Pandas", "NumPy", "scikit-learn", "PyTorch", "XGBoost", "VADER", "Bayesian modelling", "Clustering", "Airflow", "dbt", "Databricks", "BeautifulSoup", "Selenium"]],
   ["Databases", ["PostgreSQL", "MySQL", "Pinecone", "SQLAlchemy", "Drizzle ORM", "Database indexing"]],
   ["Cloud & infra", ["AWS", "Cloudflare", "Cloudflare Workers", "Cloudflare Hyperdrive", "Docker", "Kubernetes", "Linux", "CI/CD", "Vercel"]],
   ["Frameworks & APIs", ["FastAPI", "Flask", "React", "Hono", "OpenAPI", "REST APIs", "Groq", "SEC EDGAR API", "ROR API"]],
@@ -50,7 +50,7 @@ const skillSections = (() => {
 })();
 
 export const groups: FilterGroup[] = [
-  { key: "type", label: "Type", values: (r) => [r.type], options: ["Internship", "Research", "Project", "Education"] },
+  { key: "type", label: "Type", values: (r) => [r.type], options: ["Internship", "Research", "Project"] },
   { key: "status", label: "Status", values: (r) => [status(r)], options: ["Current", "Past"] },
   { key: "year", label: "Year active", values: yearsActive, options: byFrequency(rows.flatMap(yearsActive)).sort() },
   { key: "name", label: "Name", values: (r) => [r.name], options: [...new Set(rows.map((r) => r.name))] },
@@ -116,7 +116,7 @@ export const sqlTokens = (f: Filters, sort: SortKey, dir: 1 | -1 = 1): Token[] =
     });
   const order = { recent: "started DESC", oldest: "started ASC", impact: "impact DESC", name: dir === 1 ? "name ASC" : "name DESC" }[sort];
   return [
-    kw("SELECT"), txt(" name, role, period, impact\n"),
+    kw("SELECT"), txt(` ${DEFAULT_COLUMNS.join(", ")}\n`),
     kw("FROM"), txt(" amey.work"),
     ...where.flatMap((w, i) => [txt("\n"), ...(i ? [txt("  "), kw("AND")] : [kw("WHERE")]), txt(" "), ...w]),
     txt("\n"), kw("ORDER BY"), txt(` ${order};`),
@@ -143,7 +143,6 @@ export const QUICK_POOL: QuickQuestion[] = [
   { label: "AI & LLM work", apply: withFilter([["area", ["AI & LLMs"]]], "recent") },
   { label: "Research work", apply: withFilter([["type", ["Research"]]]) },
   { label: "Side projects", apply: withFilter([["type", ["Project"]]]) },
-  { label: "Education", apply: withFilter([["type", ["Education"]]]) },
   { label: "What I’m doing now", apply: withFilter([["status", ["Current"]]]) },
   { label: "Backend & APIs", apply: withFilter([["area", ["Backend & APIs"]]]) },
   { label: "Machine learning", apply: withFilter([["area", ["Machine learning"]]]) },

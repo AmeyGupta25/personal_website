@@ -1,15 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Check,
-  Copy,
-  Github,
-  Link2,
-  Linkedin,
-  Mail,
-  Shuffle,
-  SlidersHorizontal,
-  X,
-} from "lucide-react";
+import { Github, Linkedin, Shuffle, SlidersHorizontal, X } from "lucide-react";
 import { person, rows as allRows } from "@/data/work";
 import {
   activeCount,
@@ -38,6 +28,7 @@ import SqlEditor from "@/components/warehouse/SqlEditor";
 import FilterPanel from "@/components/warehouse/FilterPanel";
 import ResultsTable from "@/components/warehouse/ResultsTable";
 import { CountTable, SchemaTable } from "@/components/warehouse/AggregateViews";
+import EmailMenu from "@/components/warehouse/EmailMenu";
 
 // a shared link carries its query (?q=) and open row (?row=); the opening query needs neither
 const params = new URLSearchParams(location.search);
@@ -46,7 +37,6 @@ const sharedRow = params.get("row");
 const DEFAULT_SQL = sqlText(emptyFilters(), "recent", 1);
 
 const contacts = [
-  { href: `mailto:${person.email}`, label: "Email", Icon: Mail, primary: true },
   { href: person.linkedin, label: "LinkedIn", Icon: Linkedin },
   { href: person.github, label: "GitHub", Icon: Github },
 ];
@@ -64,17 +54,6 @@ const Index = () => {
     pickQuick(6),
   );
   const [filtersOpen, setFiltersOpen] = useState(false);
-  // mailto does nothing for people without a mail app, so the address can be copied too
-  const [copied, setCopied] = useState<"email" | "link" | null>(null);
-  const copy = async (what: "email" | "link", text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(what);
-      window.setTimeout(() => setCopied(null), 2000);
-    } catch {
-      window.prompt("Copy:", text);
-    }
-  };
 
   // what the visitor has typed; null while the editor shows the filters' own query
   const [draft, setDraft] = useState<string | null>(sharedQuery);
@@ -247,37 +226,19 @@ const Index = () => {
           <p className="mt-2 text-[15px] text-wh-mute">{person.line}</p>
         </div>
         <nav aria-label="Contact" className="flex flex-wrap gap-2">
-          {contacts.map(({ href, label, Icon, primary }) => (
+          <EmailMenu email={person.email} />
+          {contacts.map(({ href, label, Icon }) => (
             <a
               key={label}
               href={href}
-              target={primary ? undefined : "_blank"}
+              target="_blank"
               rel="noopener noreferrer"
-              className={`inline-flex items-center gap-2 rounded-lg border-2 border-wh-ink px-3.5 py-2 text-[14px] font-bold transition-colors ${
-                primary
-                  ? "bg-wh-ink text-wh-paper hover:bg-wh-body"
-                  : "bg-wh-paper hover:bg-wh-soft"
-              }`}
+              className="inline-flex items-center gap-2 rounded-lg border-2 border-wh-ink bg-wh-paper px-3.5 py-2 text-[14px] font-bold transition-colors hover:bg-wh-soft"
             >
               <Icon className="h-4 w-4" aria-hidden />
               {label}
             </a>
           ))}
-          <button
-            type="button"
-            onClick={() => copy("email", person.email)}
-            title={`Copy ${person.email}`}
-            className="inline-flex items-center gap-2 rounded-lg border-2 border-wh-ink bg-wh-paper px-3.5 py-2 text-[14px] font-bold transition-colors hover:bg-wh-soft"
-          >
-            {copied === "email" ? (
-              <Check className="h-4 w-4" aria-hidden />
-            ) : (
-              <Copy className="h-4 w-4" aria-hidden />
-            )}
-            <span aria-live="polite">
-              {copied === "email" ? "Copied" : "Copy email"}
-            </span>
-          </button>
         </nav>
       </header>
 
@@ -385,25 +346,6 @@ const Index = () => {
                     <X className="h-3 w-3" aria-hidden />
                   </button>
                 ))}
-              {typed && (
-                <button
-                  type="button"
-                  onClick={() => copy("link", location.href)}
-                  className="ml-auto inline-flex items-center gap-1.5 font-sans text-[13px] font-bold text-wh-ink underline underline-offset-4"
-                  title="Copy a link that opens this exact query"
-                >
-                  {copied === "link" ? (
-                    <Check className="h-3.5 w-3.5" aria-hidden />
-                  ) : (
-                    <Link2 className="h-3.5 w-3.5" aria-hidden />
-                  )}
-                  <span aria-live="polite">
-                    {copied === "link"
-                      ? "Link copied"
-                      : "Copy link to this view"}
-                  </span>
-                </button>
-              )}
             </div>
             {typed && view === "schema" && <SchemaTable />}
             {typed && view === "counts" && (

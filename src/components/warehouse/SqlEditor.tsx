@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTypewriter } from "@/hooks/use-typewriter";
-import { CircleHelp, Play, RotateCcw, TriangleAlert } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  CircleHelp,
+  Play,
+  RotateCcw,
+  TriangleAlert,
+} from "lucide-react";
 import { COLUMNS, complete, tokenize } from "@/lib/sql";
 import { completionValues } from "@/lib/warehouse";
 
@@ -120,17 +127,25 @@ const SqlEditor = ({
   const shown = typeIn ? typed : value;
   const area = useRef<HTMLTextAreaElement>(null);
 
-  // completion: suggestions for the word at the caret; Tab takes the first, Esc hides them
+  // completion, the way Google Docs does it: the rest of the likeliest word shows faded after
+  // the caret; Tab (or a tap on it) takes it, Esc hides it until the next keystroke
   const [caret, setCaret] = useState<number | null>(null);
   const [hidden, setHidden] = useState(false);
-  const suggest = useMemo(
-    () =>
-      typeIn || caret == null || hidden
-        ? null
-        : complete(shown, caret, completionValues),
-    [typeIn, caret, hidden, shown],
-  );
-  const options = suggest?.options ?? [];
+  const suggest = useMemo(() => {
+    // only at the end of a line: the faded text would otherwise push the rest of the line out of
+    // step with the invisible textarea the visitor is actually typing in
+    if (typeIn || caret == null || hidden) return null;
+    const rest = shown.slice(caret);
+    if (rest && !rest.startsWith("\n")) return null;
+    const c = complete(shown, caret, completionValues, { prefixOnly: true });
+    return c.options.length ? c : null;
+  }, [typeIn, caret, hidden, shown]);
+  const best = suggest?.options[0] ?? null;
+  const ghost =
+    suggest && best && caret != null
+      ? best.slice(caret - suggest.from) +
+        (suggest.quoted && shown[caret] !== "'" ? "'" : "")
+      : "";
   const placeCaret = (pos: number) =>
     requestAnimationFrame(() => {
       area.current?.setSelectionRange(pos, pos);
@@ -149,10 +164,16 @@ const SqlEditor = ({
     setCaret(t.selectionStart === t.selectionEnd ? t.selectionStart : null);
   };
 
-  // history: ↑ on the first line goes back, ↓ on the last line comes forward
+  // history: ↑ on the first line (or the ▲ button) goes back, ↓ on the last line (or ▼) comes forward
   const [step, setStep] = useState<number | null>(null);
   useEffect(() => setStep(null), [history.length]);
-  const recall = (to: number) => {
+  const last = history.length - 1;
+  // the query on screen is usually the newest one run, so going back starts from the one before it
+  const prev =
+    step == null ? (history[last] === shown.trim() ? last - 1 : last) : step - 1;
+  const next = step != null && step < last ? step + 1 : null;
+  const recall = (to: number | null) => {
+    if (to == null || to < 0 || to > last) return;
     setStep(to);
     const text = history[to];
     onChange(text);
@@ -181,7 +202,27 @@ const SqlEditor = ({
               aria-hidden
               className={`${shared} pointer-events-none text-wh-ink`}
             >
-              <Highlighted sql={shown} error={typeIn ? null : error} />
+              {ghost && caret != null ? (
+                <>
+                  <Highlighted sql={shown.slice(0, caret)} error={error && error.at < caret ? error : null} />
+                  {/* above the transparent textarea, so a tap can take it on touch screens */}
+                  <span
+                    className="pointer-events-auto relative z-10 cursor-pointer text-wh-mute/60"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      accept(best!);
+                    }}
+                  >
+                    {ghost}
+                    <span className="ml-2 inline-block rounded border border-wh-mute/40 px-1 align-[0.15em] font-sans text-[0.6em] font-bold uppercase leading-[1.4] tracking-[0.06em] text-wh-mute/70">
+                      tab
+                    </span>
+                  </span>
+                  <Highlighted sql={shown.slice(caret)} error={error && error.at >= caret ? { ...error, at: error.at - caret } : null} />
+                </>
+              ) : (
+                <Highlighted sql={shown} error={typeIn ? null : error} />
+              )}
               {typeIn && !done && (
                 <>
                   <span className="wh-caret" />
@@ -213,24 +254,24 @@ const SqlEditor = ({
                   onRun();
                   return;
                 }
-                if (options.length && e.key === "Tab" && !e.shiftKey) {
+                if (best && e.key === "Tab" && !e.shiftKey) {
                   e.preventDefault();
-                  accept(options[0]);
+                  accept(best);
                   return;
                 }
-                if (options.length && e.key === "Escape") {
+                if (best && e.key === "Escape") {
                   e.preventDefault();
                   setHidden(true);
                   return;
                 }
                 const t = e.currentTarget;
                 const flat = t.selectionStart === t.selectionEnd;
-                if (flat && history.length && e.key === "ArrowUp" && !t.value.slice(0, t.selectionStart).includes("\n")) {
+                if (flat && prev >= 0 && e.key === "ArrowUp" && !t.value.slice(0, t.selectionStart).includes("\n")) {
                   e.preventDefault();
-                  recall(step == null ? history.length - 1 : Math.max(0, step - 1));
-                } else if (flat && step != null && e.key === "ArrowDown" && !t.value.slice(t.selectionEnd).includes("\n")) {
+                  recall(prev);
+                } else if (flat && next != null && e.key === "ArrowDown" && !t.value.slice(t.selectionEnd).includes("\n")) {
                   e.preventDefault();
-                  if (step < history.length - 1) recall(step + 1);
+                  recall(next);
                 }
               }}
               spellCheck={false}
@@ -270,7 +311,24 @@ const SqlEditor = ({
             </button>
           </div>
         </div>
-        <div className="absolute bottom-1.5 right-1.5 md:bottom-2 md:right-2">
+        <div className="absolute bottom-1.5 right-1.5 flex items-center gap-0.5 md:bottom-2 md:right-2">
+          {/* history, beside help: the queries you've run, newest last */}
+          {[
+            { to: prev >= 0 ? prev : null, label: "Previous query", key: "↑", Icon: ChevronUp },
+            { to: next, label: "Next query", key: "↓", Icon: ChevronDown },
+          ].map(({ to, label, key, Icon }) => (
+            <button
+              key={label}
+              type="button"
+              disabled={typeIn || to == null}
+              onClick={() => recall(to)}
+              aria-label={label}
+              title={`${label} · ${key} in the editor`}
+              className="grid h-8 w-8 place-items-center rounded-full transition-colors hover:bg-wh-soft disabled:cursor-default disabled:text-wh-faint disabled:hover:bg-transparent"
+            >
+              <Icon className="h-5 w-5" aria-hidden />
+            </button>
+          ))}
           <button
             type="button"
             aria-expanded={help}
@@ -284,26 +342,6 @@ const SqlEditor = ({
           </button>
         </div>
       </div>
-
-      {options.length > 0 && (
-        <div className="mt-2 flex flex-wrap items-center gap-1.5" aria-label="Suggestions" role="group">
-          {options.map((o, i) => (
-            <button
-              key={o}
-              type="button"
-              // keep the caret in the editor
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => accept(o)}
-              className={`rounded-md border-[1.5px] px-2 py-0.5 font-mono text-[13px] font-semibold ${i === 0 ? "border-wh-ink bg-wh-hl" : "border-wh-chip bg-wh-paper hover:border-wh-ink"}`}
-            >
-              {o}
-            </button>
-          ))}
-          <span className="ml-1 text-[12px] text-wh-mute">
-            <kbd className="font-mono">Tab</kbd> to complete · <kbd className="font-mono">Esc</kbd> to hide
-          </span>
-        </div>
-      )}
 
       {help && (
         <div
@@ -328,7 +366,7 @@ const SqlEditor = ({
             <code className="font-mono">SELECT skills, COUNT(*) FROM amey.work GROUP BY skills</code>
             , and see every column with{" "}
             <code className="font-mono">DESCRIBE amey.work</code>. Tab completes
-            names and values; ↑ and ↓ step through queries you've run.
+            names and values as you type; ▲ / ▼ (or ↑ / ↓) step through queries you've run.
           </p>
         </div>
       )}

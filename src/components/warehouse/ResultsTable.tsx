@@ -1,5 +1,5 @@
 import { Fragment, useSyncExternalStore } from "react";
-import { ArrowRight, ArrowUpDown, ArrowUpRight, ChevronDown } from "lucide-react";
+import { ArrowUpDown, ArrowUpRight, ChevronDown } from "lucide-react";
 import { label as monthText, period, status, yearsActive, type WorkRow, type YearMonth } from "@/data/work";
 import type { Column } from "@/lib/sql";
 import type { SortKey } from "@/lib/warehouse";
@@ -32,26 +32,8 @@ const Sortable = ({ label, active, onClick, ariaSort, className = "" }: { label:
   </th>
 );
 
-/** The row's pipeline, source to outcome: what the bullets describe, drawn so it reads at a glance. */
-const Lineage = ({ steps }: { steps: string[] }) => (
-  <div className="mt-4">
-    <p className="mb-2 font-mono text-[12px] text-wh-mute">lineage</p>
-    <ol aria-label="How the data flows, from source to outcome" className="flex flex-wrap items-center gap-y-2">
-      {steps.map((s, i) => {
-        const last = i === steps.length - 1;
-        return (
-          <li key={s} className="flex items-center">
-            <span className={`rounded-md border-2 border-wh-ink px-2.5 py-1 text-[13px] font-bold leading-tight ${last ? "bg-wh-hl" : i === 0 ? "bg-wh-soft" : "bg-wh-paper"}`}>{s}</span>
-            {!last && <ArrowRight className="mx-1 h-4 w-4 flex-none text-wh-mute" aria-hidden />}
-          </li>
-        );
-      })}
-    </ol>
-  </div>
-);
-
 const LABEL: Record<Column, string> = {
-  name: "Name", role: "Role", type: "Type", status: "Status", period: "Period", impact: "Impact", location: "Location",
+  name: "Name", summary: "Summary", role: "Role", type: "Type", status: "Status", period: "Period", impact: "Impact", location: "Location",
   started: "Started", ended: "Ended", skills: "Skills", areas: "What I did", years: "Years",
 };
 const monthLabel = (ym: YearMonth | null, open: string) => (ym ? monthText(ym) : open);
@@ -59,6 +41,7 @@ const monthLabel = (ym: YearMonth | null, open: string) => (ym ? monthText(ym) :
 const cell = (r: WorkRow, c: Column) => {
   switch (c) {
     case "role": return r.role;
+    case "summary": return r.plain;
     case "type": return r.type;
     case "status": return status(r);
     case "period": return period(r);
@@ -85,9 +68,10 @@ const useMedia = (query: string) =>
   );
 
 /** The default view hides its secondary columns on small screens; a custom SELECT shows everything it asked for. */
-const responsive = (c: Column, standard: boolean) => (!standard ? "" : c === "role" ? "hidden lg:table-cell" : c === "period" ? "hidden md:table-cell" : "");
+const responsive = (c: Column, standard: boolean) => (!standard ? "" : c === "role" ? "hidden lg:table-cell" : c === "period" || c === "summary" ? "hidden md:table-cell" : "");
 const tdStyle: Partial<Record<Column, string>> = {
   role: "text-[15px]",
+  summary: "min-w-[16rem] text-[14.5px] leading-snug text-wh-body",
   period: "whitespace-nowrap font-mono text-[13.5px] tabular-nums text-wh-mute",
   started: "whitespace-nowrap font-mono text-[13.5px] tabular-nums text-wh-mute",
   ended: "whitespace-nowrap font-mono text-[13.5px] tabular-nums text-wh-mute",
@@ -100,7 +84,7 @@ const ResultsTable = ({ rows, columns, standard, sortable, sort, runId, openId, 
   const md = useMedia("(min-width: 768px)");
   const lg = useMedia("(min-width: 1024px)");
   // a full-width cell must span only the columns on screen: spanning hidden ones adds empty grid columns
-  const span = columns.filter((c) => !standard || (c === "role" ? lg : c === "period" ? md : true)).length;
+  const span = columns.filter((c) => !standard || (c === "role" ? lg : c === "period" || c === "summary" ? md : true)).length;
   return (
   <div className={standard ? "" : "overflow-x-auto"}>
   <table className={`w-full border-collapse ${standard ? "table-fixed md:table-auto" : ""}`}>
@@ -172,10 +156,6 @@ const ResultsTable = ({ rows, columns, standard, sortable, sort, runId, openId, 
                         {c === "name" && (
                           <span className="mt-1.5 block w-fit rounded-full border-[1.5px] border-wh-ink px-2 py-px text-[11px] font-bold uppercase tracking-[0.08em]">{r.type}</span>
                         )}
-                        {/* the one-line summary, so the table reads without opening anything; the open row shows it in full below */}
-                        {c === "name" && standard && !open && (
-                          <span className="mt-2 block max-w-[52ch] text-[14px] font-normal leading-snug tracking-normal text-wh-body md:text-[15px]">{r.plain}</span>
-                        )}
                       </span>
                     </button>
                   </td>
@@ -194,8 +174,7 @@ const ResultsTable = ({ rows, columns, standard, sortable, sort, runId, openId, 
                     {r.location ? ` · ${r.location}` : ""}
                   </p>
                   <p className="max-w-[68ch] text-[18px] leading-relaxed">{r.plain}</p>
-                  {r.flow && <Lineage steps={r.flow} />}
-                  <ul className="mt-4 max-w-[78ch] list-disc space-y-1.5 pl-5 text-[14.5px] leading-relaxed text-wh-body">
+                  <ul className="mt-3 max-w-[78ch] list-disc space-y-1.5 pl-5 text-[14.5px] leading-relaxed text-wh-body">
                     {r.bullets.map((b) => (
                       <li key={b}>{b}</li>
                     ))}
@@ -212,11 +191,6 @@ const ResultsTable = ({ rows, columns, standard, sortable, sort, runId, openId, 
                       </span>
                     ))}
                   </div>
-                  {r.image && (
-                    <a href={r.links?.[0]?.href ?? r.image.src} target="_blank" rel="noopener noreferrer" className="mt-4 block w-full max-w-[480px] overflow-hidden rounded-lg border-2 border-wh-ink">
-                      <img src={r.image.src} alt={r.image.alt} width={1280} height={720} loading="lazy" className="block h-auto w-full" />
-                    </a>
-                  )}
                   {r.links && (
                     <p className="mt-4 flex flex-wrap gap-5">
                       {r.links.map((l) => (

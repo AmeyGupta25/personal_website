@@ -71,18 +71,19 @@ export const tokenize = (src: string): Tok[] => {
 };
 
 // ---------- the table's columns ----------
-export type Column = "name" | "role" | "type" | "status" | "period" | "impact" | "location" | "started" | "ended" | "skills" | "areas" | "years";
-export const COLUMNS: Column[] = ["name", "role", "type", "status", "period", "impact", "location", "started", "ended", "skills", "areas", "years"];
+export type Column = "name" | "summary" | "role" | "type" | "status" | "period" | "impact" | "location" | "started" | "ended" | "skills" | "areas" | "years";
+export const COLUMNS: Column[] = ["name", "summary", "role", "type", "status", "period", "impact", "location", "started", "ended", "skills", "areas", "years"];
 const ARRAY_COLUMNS = new Set<Column>(["skills", "areas", "years"]);
 const ALIASES: Record<string, Column> = { company: "name", title: "name", skill: "skills", area: "areas", year: "years", start: "started", end: "ended" };
 /** What `SELECT *` shows: the table's main columns. */
-export const DEFAULT_COLUMNS: Column[] = ["name", "role", "period", "impact"];
+export const DEFAULT_COLUMNS: Column[] = ["name", "summary", "role", "period", "impact"];
 
 /** What DESCRIBE amey.work prints: every column, its type and what it holds. */
 export const SCHEMA: { column: Column; type: string; note: string }[] = [
   { column: "name", type: "text", note: "The organisation or project" },
+  { column: "summary", type: "text", note: "One plain-English sentence on what I did" },
   { column: "role", type: "text", note: "My title, or what the project is" },
-  { column: "type", type: "text", note: "Internship, Research, Project or Education" },
+  { column: "type", type: "text", note: "Internship, Research or Project" },
   { column: "status", type: "text", note: "Current or Past" },
   { column: "period", type: "text", note: "When, shown as Mon YYYY – Mon YYYY" },
   { column: "impact", type: "text", note: "The headline number; sorts by size of impact" },
@@ -370,6 +371,7 @@ type Val = string | number | null | string[];
 const valueOf = (r: WorkRow, c: Column): Val => {
   switch (c) {
     case "status": return status(r);
+    case "summary": return r.plain;
     case "period": return r.from ? `${r.from[0]}-${String(r.from[1]).padStart(2, "0")}` : null;
     case "location": return r.location ?? null;
     case "started": return r.from ? monthIndex(r.from) : null;
@@ -513,8 +515,14 @@ const COMPLETE_WORDS = [
 ];
 
 /** What the text before the caret could complete to: a keyword, column or table outside quotes,
-    or (inside an open quote) one of the table's real values. `from` is where the replaced word starts. */
-export const complete = (src: string, at: number, values: string[]): { from: number; options: string[]; quoted: boolean } => {
+    or (inside an open quote) one of the table's real values. `from` is where the replaced word starts.
+    With `prefixOnly`, only options that begin with what's typed (so the rest can be shown after the caret). */
+export const complete = (
+  src: string,
+  at: number,
+  values: string[],
+  { prefixOnly = false } = {},
+): { from: number; options: string[]; quoted: boolean } => {
   const before = src.slice(0, at);
   const quotes = (before.match(/'/g) ?? []).length;
   if (quotes % 2 === 1) {
@@ -522,7 +530,7 @@ export const complete = (src: string, at: number, values: string[]): { from: num
     const prefix = before.slice(from).toLowerCase();
     if (!prefix) return { from, options: [], quoted: true };
     const starts = values.filter((v) => v.toLowerCase().startsWith(prefix));
-    const inside = values.filter((v) => !starts.includes(v) && v.toLowerCase().includes(prefix));
+    const inside = prefixOnly ? [] : values.filter((v) => !starts.includes(v) && v.toLowerCase().includes(prefix));
     return { from, options: [...starts, ...inside].filter((v) => v.toLowerCase() !== prefix).slice(0, 6), quoted: true };
   }
   const word = before.match(/[A-Za-z_][A-Za-z0-9_.]*$/)?.[0] ?? "";
