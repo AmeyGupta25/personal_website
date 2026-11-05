@@ -1,23 +1,17 @@
 import { useLocation } from "react-router-dom";
-import { useEffect } from "react";
 
 const NotFound = () => {
-  const location = useLocation();
-
-  useEffect(() => {
-    console.error("404 Error: User attempted to access non-existent route:", location.pathname);
-  }, [location.pathname]);
-
+  const { pathname } = useLocation();
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">404</h1>
-        <p className="mb-4 text-xl text-muted-foreground">Oops! Page not found</p>
-        <a href="/" className="text-primary underline hover:text-primary/90">
-          Return to Home
-        </a>
-      </div>
-    </div>
+    <main className="flex min-h-screen flex-col justify-center gap-5 px-4 md:px-12">
+      <pre className="whitespace-pre-wrap break-words font-mono text-[15px] font-semibold md:text-[18px]">
+        <span className="text-wh-kw">SELECT</span> * <span className="text-wh-kw">FROM</span> pages <span className="text-wh-kw">WHERE</span> path = <span className="text-wh-str">'{pathname}'</span>;
+      </pre>
+      <h1 className="text-[clamp(36px,6vw,72px)] font-extrabold leading-none tracking-[-0.03em]">0 rows.</h1>
+      <a href="/" className="w-fit rounded-lg border-2 border-wh-ink bg-wh-ink px-4 py-2.5 font-bold text-wh-paper">
+        Back to the table
+      </a>
+    </main>
   );
 };
 

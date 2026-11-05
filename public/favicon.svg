@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- a tiny results table: the top row highlighted, as on the site -->
+  <rect width="32" height="32" rx="7" fill="#111111"/>
+  <rect x="5" y="6.5" width="22" height="6" rx="2" fill="#FFE066"/>
+  <rect x="5" y="15" width="22" height="2.6" rx="1.3" fill="#FFFFFF" opacity="0.9"/>
+  <rect x="5" y="20.6" width="15" height="2.6" rx="1.3" fill="#FFFFFF" opacity="0.6"/>
+</svg>
