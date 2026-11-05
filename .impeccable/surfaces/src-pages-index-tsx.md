@@ -5,13 +5,6 @@ primary_target: "src/pages/Index.tsx"
 related_targets: []
 ---
 
----
-version: 1
-slug: "src-pages-index-tsx"
-primary_target: "src/pages/Index.tsx"
-related_targets: []
----
-
 # Home page (ameygupta.com)
 
 **Mode:** Experience. A single-surface portfolio where the work itself leads from the first viewport.

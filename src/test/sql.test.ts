@@ -87,3 +87,26 @@ describe("completion", () => {
     expect(complete("SELECT n", 8, []).options).toEqual([]);
   });
 });
+
+describe("data hygiene", () => {
+  it("files every skill a row uses under a section, and lists no unused skill", async () => {
+    const { SKILL_SECTIONS } = await import("@/lib/warehouse");
+    const sectioned = SKILL_SECTIONS.flatMap(([, list]) => list);
+    const used = new Set(rows.flatMap((r) => r.skills));
+    expect([...used].filter((s) => !sectioned.includes(s))).toEqual([]);
+    expect(sectioned.filter((s) => !used.has(s))).toEqual([]);
+  });
+  it("draws a lineage of at least three steps wherever there is one, with unique ids", () => {
+    expect(new Set(rows.map((r) => r.id)).size).toBe(rows.length);
+    for (const r of rows) if (r.flow) expect(r.flow.length, r.id).toBeGreaterThanOrEqual(3);
+  });
+  it("round-trips every filter quick question through SQL", async () => {
+    const { QUICK_POOL } = await import("@/lib/warehouse");
+    for (const q of QUICK_POOL) {
+      if (!q.apply) continue;
+      const { filters, sort } = q.apply();
+      const mapped = queryToFilters(parse(sqlText(filters, sort)));
+      expect(mapped?.filters.selected, q.label).toEqual(filters.selected);
+    }
+  });
+});
