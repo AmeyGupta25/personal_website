@@ -1,6 +1,6 @@
-import { Fragment } from "react";
-import { ArrowUpDown, ArrowUpRight, ChevronDown } from "lucide-react";
-import { label as monthText, period, yearsActive, type WorkRow, type YearMonth } from "@/data/work";
+import { Fragment, useSyncExternalStore } from "react";
+import { ArrowRight, ArrowUpDown, ArrowUpRight, ChevronDown } from "lucide-react";
+import { label as monthText, period, status, yearsActive, type WorkRow, type YearMonth } from "@/data/work";
 import type { Column } from "@/lib/sql";
 import type { SortKey } from "@/lib/warehouse";
 
@@ -32,6 +32,24 @@ const Sortable = ({ label, active, onClick, ariaSort, className = "" }: { label:
   </th>
 );
 
+/** The row's pipeline, source to outcome: what the bullets describe, drawn so it reads at a glance. */
+const Lineage = ({ steps }: { steps: string[] }) => (
+  <div className="mt-4">
+    <p className="mb-2 font-mono text-[12px] text-wh-mute">lineage</p>
+    <ol aria-label="How the data flows, from source to outcome" className="flex flex-wrap items-center gap-y-2">
+      {steps.map((s, i) => {
+        const last = i === steps.length - 1;
+        return (
+          <li key={s} className="flex items-center">
+            <span className={`rounded-md border-2 border-wh-ink px-2.5 py-1 text-[13px] font-bold leading-tight ${last ? "bg-wh-hl" : i === 0 ? "bg-wh-soft" : "bg-wh-paper"}`}>{s}</span>
+            {!last && <ArrowRight className="mx-1 h-4 w-4 flex-none text-wh-mute" aria-hidden />}
+          </li>
+        );
+      })}
+    </ol>
+  </div>
+);
+
 const LABEL: Record<Column, string> = {
   name: "Name", role: "Role", type: "Type", status: "Status", period: "Period", impact: "Impact", location: "Location",
   started: "Started", ended: "Ended", skills: "Skills", areas: "What I did", years: "Years",
@@ -42,7 +60,7 @@ const cell = (r: WorkRow, c: Column) => {
   switch (c) {
     case "role": return r.role;
     case "type": return r.type;
-    case "status": return r.from && !r.to ? "Current" : "Past";
+    case "status": return status(r);
     case "period": return period(r);
     case "impact": return r.impact;
     case "location": return r.location ?? "—";
@@ -54,6 +72,17 @@ const cell = (r: WorkRow, c: Column) => {
     default: return r.name;
   }
 };
+
+/** Whether a media query matches, kept in step with the window. */
+const useMedia = (query: string) =>
+  useSyncExternalStore(
+    (cb) => {
+      const m = window.matchMedia(query);
+      m.addEventListener("change", cb);
+      return () => m.removeEventListener("change", cb);
+    },
+    () => window.matchMedia(query).matches,
+  );
 
 /** The default view hides its secondary columns on small screens; a custom SELECT shows everything it asked for. */
 const responsive = (c: Column, standard: boolean) => (!standard ? "" : c === "role" ? "hidden lg:table-cell" : c === "period" ? "hidden md:table-cell" : "");
@@ -67,7 +96,12 @@ const tdStyle: Partial<Record<Column, string>> = {
   areas: "min-w-[14rem] text-[13.5px] leading-relaxed text-wh-body",
 };
 
-const ResultsTable = ({ rows, columns, standard, sortable, sort, runId, openId, onOpen, onSort, onReset, emptyText, pending = false }: Props) => (
+const ResultsTable = ({ rows, columns, standard, sortable, sort, runId, openId, onOpen, onSort, onReset, emptyText, pending = false }: Props) => {
+  const md = useMedia("(min-width: 768px)");
+  const lg = useMedia("(min-width: 1024px)");
+  // a full-width cell must span only the columns on screen: spanning hidden ones adds empty grid columns
+  const span = columns.filter((c) => !standard || (c === "role" ? lg : c === "period" ? md : true)).length;
+  return (
   <div className={standard ? "" : "overflow-x-auto"}>
   <table className={`w-full border-collapse ${standard ? "table-fixed md:table-auto" : ""}`}>
     <caption className="sr-only">Amey Gupta’s work, one row per role or project. Open a row for details.</caption>
@@ -99,7 +133,7 @@ const ResultsTable = ({ rows, columns, standard, sortable, sort, runId, openId, 
     <tbody>
       {rows.length === 0 && !pending && (
         <tr>
-          <td colSpan={columns.length} className="px-3 py-8 text-[19px] text-wh-mute">
+          <td colSpan={span} className="px-3 py-8 text-[19px] text-wh-mute">
             {emptyText}{" "}
             <button type="button" onClick={onReset} className="font-semibold text-wh-ink underline underline-offset-4">
               Start over
@@ -154,13 +188,14 @@ const ResultsTable = ({ rows, columns, standard, sortable, sort, runId, openId, 
             </tr>
             {open && (
               <tr id={detailId} className="bg-wh-join">
-                <td colSpan={columns.length} className="border-b-[3px] border-wh-ink px-3 pb-6 pt-4">
+                <td colSpan={span} className="border-b-[3px] border-wh-ink px-3 pb-6 pt-4">
                   <p className="mb-2 font-mono text-[12px] text-wh-mute">
                     JOIN amey.details USING (id) → {r.role} · {period(r)}
                     {r.location ? ` · ${r.location}` : ""}
                   </p>
                   <p className="max-w-[68ch] text-[18px] leading-relaxed">{r.plain}</p>
-                  <ul className="mt-3 max-w-[78ch] list-disc space-y-1.5 pl-5 text-[14.5px] leading-relaxed text-wh-body">
+                  {r.flow && <Lineage steps={r.flow} />}
+                  <ul className="mt-4 max-w-[78ch] list-disc space-y-1.5 pl-5 text-[14.5px] leading-relaxed text-wh-body">
                     {r.bullets.map((b) => (
                       <li key={b}>{b}</li>
                     ))}
@@ -201,6 +236,7 @@ const ResultsTable = ({ rows, columns, standard, sortable, sort, runId, openId, 
     </tbody>
   </table>
   </div>
-);
+  );
+};
 
 export default ResultsTable;

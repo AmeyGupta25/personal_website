@@ -1,6 +1,6 @@
 // Every fact here comes from PRODUCT.md (Amey's résumé). Do not add metrics that aren't there.
 
-export type WorkType = "Internship" | "Research" | "Project";
+export type WorkType = "Internship" | "Research" | "Project" | "Education";
 export type YearMonth = [number, number];
 
 export interface WorkRow {
@@ -11,7 +11,7 @@ export interface WorkRow {
   type: WorkType;
   /** null for undated projects */
   from: YearMonth | null;
-  /** null while ongoing */
+  /** null while ongoing; a future month for a set end (a degree's graduation) */
   to: YearMonth | null;
   /** The one number in the impact column. */
   impact: string;
@@ -25,6 +25,8 @@ export interface WorkRow {
   areas: string[];
   location?: string;
   links?: { label: string; href: string }[];
+  /** The pipeline as built, source to outcome, for the open row's lineage strip. Every step comes from the bullets. */
+  flow?: string[];
   /** A screenshot of the live project, shown in the open row and linked to the first link. */
   image?: { src: string; alt: string };
 }
@@ -66,6 +68,7 @@ export const rows: WorkRow[] = [
     ],
     skills: ["Python", "SQL", "PostgreSQL", "LLMs", "Salesforce", "Power BI", "SEC EDGAR API", "ROR API", "REST APIs", "JavaScript", "MySQL", "Tableau", "BeautifulSoup"],
     areas: ["Data pipelines & ETL", "Databases & warehousing", "Data quality", "AI & LLMs", "Backend & APIs", "Analytics & dashboards"],
+    flow: ["58 sources", "7 automated connectors", "PostgreSQL staging", "20B LLM extraction (≥0.85)", "7 core tables", "Salesforce match", "Power BI dashboard", "$2M+ closed sales"],
   },
   {
     id: "orchid-swe",
@@ -86,6 +89,7 @@ export const rows: WorkRow[] = [
     ],
     skills: ["PostgreSQL", "SQL", "Hono", "OpenAPI", "REST APIs", "Cloudflare Workers", "Cloudflare Hyperdrive", "Drizzle ORM"],
     areas: ["Backend & APIs", "Databases & warehousing", "Data pipelines & ETL"],
+    flow: ["External RSS feeds", "Upsert-only sync", "PostgreSQL (Drizzle, Hyperdrive)", "Hono REST API on Workers", "Enterprise developer portal"],
   },
   {
     id: "health",
@@ -106,6 +110,7 @@ export const rows: WorkRow[] = [
     ],
     skills: ["Python", "Cython", "R", "SQL", "PostgreSQL", "Bayesian modelling", "Clustering", "Bash", "Pandas", "NumPy", "scikit-learn", "PyTorch"],
     areas: ["Data pipelines & ETL", "Machine learning", "Performance tuning", "Databases & warehousing", "Research"],
+    flow: ["Multi-omics data, 500+ cell lines", "ETL", "PostgreSQL", "Cython compute (7–18×)", "Clustering + Bayesian models", "93% accuracy"],
   },
   {
     id: "profai",
@@ -124,6 +129,7 @@ export const rows: WorkRow[] = [
     ],
     skills: ["Python", "FastAPI", "React", "Pinecone", "Groq", "LLMs", "Embeddings", "Vercel"],
     areas: ["AI & LLMs", "Data pipelines & ETL", "Backend & APIs"],
+    flow: ["8,000+ reviews", "Embeddings", "Pinecone", "FastAPI + Groq (RAG)", "React app", "200+ students"],
     links: [
       { label: "Live site", href: "https://rmp-rag-ten.vercel.app" },
       { label: "Source code", href: "https://github.com/AmeyGupta25/rmp-rag" },
@@ -149,6 +155,7 @@ export const rows: WorkRow[] = [
     ],
     skills: ["Python", "SQL", "PostgreSQL", "BeautifulSoup", "Selenium", "Docker", "Airflow", "SQLAlchemy", "REST APIs", "Flask", "Databricks", "dbt", "Kubernetes", "Linux", "CI/CD"],
     areas: ["Data pipelines & ETL", "Databases & warehousing", "Data quality", "Backend & APIs"],
+    flow: ["70+ SEC & registry sources", "Dockerised scrapers", "Airflow", "SQLAlchemy validation (95%+)", "PostgreSQL warehouse", "Fintech AI tool"],
   },
   {
     id: "orchid-tpm",
@@ -188,10 +195,29 @@ export const rows: WorkRow[] = [
     ],
     skills: ["Python", "FastAPI", "PostgreSQL", "XGBoost", "VADER", "Plotly.js"],
     areas: ["Machine learning", "Data pipelines & ETL", "Backend & APIs", "Analytics & dashboards"],
+    flow: ["Prices + news", "VADER sentiment", "XGBoost", "PostgreSQL", "FastAPI", "Dashboard"],
     links: [
       { label: "Live site", href: "https://ameygupta25.github.io/stockpulse/index.html" },
       { label: "Source code", href: "https://github.com/AmeyGupta25/stockpulse" },
     ],
+  },
+  {
+    id: "ucsd",
+    name: "UC San Diego",
+    role: "B.S. Data Science",
+    type: "Education",
+    from: [2024, 8],
+    to: [2028, 6],
+    location: "San Diego, CA",
+    impact: "Class of ’28",
+    impactRank: 0,
+    plain: "Studying data science, with coursework in database systems, algorithms, statistics and computer architecture.",
+    metrics: ["B.S. Data Science", "Graduating Jun 2028"],
+    bullets: [
+      "Relevant coursework: Data Structures & Algorithms, Database Systems, Data Visualization, Probability & Statistics, Linear Algebra, Discrete Math, Computer Systems & Assembly, Computer Architecture.",
+    ],
+    skills: [],
+    areas: [],
   },
 ];
 
@@ -206,8 +232,16 @@ export const period = (r: WorkRow) => {
   return `${label(r.from)} – ${r.to ? label(r.to) : "now"}`;
 };
 
+const now = new Date();
+const thisMonth = now.getFullYear() * 12 + now.getMonth();
+
+/** Ongoing work, or work whose set end (a graduation) is still ahead. */
+export const isCurrent = (r: WorkRow) => !!r.from && (!r.to || monthIndex(r.to) >= thisMonth);
+export const status = (r: WorkRow) => (isCurrent(r) ? "Current" : "Past");
+
+/** Calendar years with work in them, up to this year (a future graduation adds no future years). */
 export const yearsActive = (r: WorkRow) => {
   if (!r.from) return [];
-  const end = r.to ? r.to[0] : new Date().getFullYear();
+  const end = Math.min(r.to ? r.to[0] : now.getFullYear(), now.getFullYear());
   return Array.from({ length: end - r.from[0] + 1 }, (_, k) => String(r.from![0] + k));
 };

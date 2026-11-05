@@ -1,4 +1,4 @@
-import { monthIndex, rows, yearsActive, type WorkRow } from "@/data/work";
+import { monthIndex, rows, status, yearsActive, type WorkRow } from "@/data/work";
 import { DEFAULT_COLUMNS, type Column, type Expr, type Query } from "@/lib/sql";
 
 export type GroupKey = "type" | "status" | "year" | "name" | "area" | "skill";
@@ -50,8 +50,8 @@ const skillSections = (() => {
 })();
 
 export const groups: FilterGroup[] = [
-  { key: "type", label: "Type", values: (r) => [r.type], options: ["Internship", "Research", "Project"] },
-  { key: "status", label: "Status", values: (r) => [r.from && !r.to ? "Current" : "Past"], options: ["Current", "Past"] },
+  { key: "type", label: "Type", values: (r) => [r.type], options: ["Internship", "Research", "Project", "Education"] },
+  { key: "status", label: "Status", values: (r) => [status(r)], options: ["Current", "Past"] },
   { key: "year", label: "Year active", values: yearsActive, options: byFrequency(rows.flatMap(yearsActive)).sort() },
   { key: "name", label: "Name", values: (r) => [r.name], options: [...new Set(rows.map((r) => r.name))] },
   { key: "area", label: "What I did", values: (r) => r.areas, options: byFrequency(rows.flatMap((r) => r.areas)), matchable: true },
@@ -124,10 +124,10 @@ export const sqlTokens = (f: Filters, sort: SortKey, dir: 1 | -1 = 1): Token[] =
 };
 
 // ---------- one-click questions: a pool, shown six at a time and shuffled ----------
-export interface QuickQuestion {
-  label: string;
-  apply: () => { filters: Filters; sort: SortKey };
-}
+/** A one-click question: either a filter setting, or a query the filters can't express (counts). */
+export type QuickQuestion =
+  | { label: string; apply: () => { filters: Filters; sort: SortKey }; sql?: never }
+  | { label: string; sql: string; apply?: never };
 const withFilter = (pairs: [GroupKey, string[]][], sort: SortKey = "impact") => () => {
   const filters = emptyFilters();
   pairs.forEach(([k, v]) => (filters.selected[k] = v));
@@ -143,6 +143,7 @@ export const QUICK_POOL: QuickQuestion[] = [
   { label: "AI & LLM work", apply: withFilter([["area", ["AI & LLMs"]]], "recent") },
   { label: "Research work", apply: withFilter([["type", ["Research"]]]) },
   { label: "Side projects", apply: withFilter([["type", ["Project"]]]) },
+  { label: "Education", apply: withFilter([["type", ["Education"]]]) },
   { label: "What I’m doing now", apply: withFilter([["status", ["Current"]]]) },
   { label: "Backend & APIs", apply: withFilter([["area", ["Backend & APIs"]]]) },
   { label: "Machine learning", apply: withFilter([["area", ["Machine learning"]]]) },
@@ -154,7 +155,15 @@ export const QUICK_POOL: QuickQuestion[] = [
   { label: "Product & strategy", apply: withFilter([["area", ["Product & strategy"]]]) },
   { label: "Data quality", apply: withFilter([["area", ["Data quality"]]]) },
   { label: "PostgreSQL work", apply: withFilter([["skill", ["PostgreSQL"]]]) },
+  { label: "Skills I use most", sql: "SELECT skills, COUNT(*)\nFROM amey.work\nGROUP BY skills\nORDER BY COUNT(*) DESC\nLIMIT 12;" },
+  { label: "What I do most", sql: "SELECT areas, COUNT(*)\nFROM amey.work\nGROUP BY areas\nORDER BY COUNT(*) DESC;" },
 ];
+
+/** The filter group a grouped column's values belong to, so a count can open its rows. */
+export const GROUP_OF: Partial<Record<Column, GroupKey>> = { type: "type", status: "status", name: "name", skills: "skill", areas: "area", years: "year" };
+
+/** Every value a quoted string in the editor can complete to. */
+export const completionValues = [...new Set(groups.flatMap((g) => g.options))];
 
 /** A fresh draw of n questions, avoiding the current set when the pool allows. */
 export const pickQuick = (n: number, current: QuickQuestion[] = []) => {
@@ -175,6 +184,7 @@ const FILTER_COLUMN: Partial<Record<Column, GroupKey>> = { type: "type", status:
 const canonical = (key: GroupKey, v: string) => groups.find((g) => g.key === key)!.options.find((o) => o.toLowerCase() === v.toLowerCase()) ?? null;
 
 export const queryToFilters = (q: Query): { filters: Filters; sort: SortKey; dir: 1 | -1 } | null => {
+  if (q.describe || q.count || q.group) return null;
   const sameCols = q.star || (q.columns.length === DEFAULT_COLUMNS.length && q.columns.every((c, i) => c === DEFAULT_COLUMNS[i]));
   if (!sameCols || q.limit != null) return null;
 
@@ -219,7 +229,6 @@ export const queryToFilters = (q: Query): { filters: Filters; sort: SortKey; dir
     else if ((e.op === "overlap" || e.op === "contains") && FILTER_COLUMN[e.col]) ok = put(FILTER_COLUMN[e.col]!, e.vals, e.op === "contains" ? "all" : "any");
     else if (e.op === "any" && !e.not && FILTER_COLUMN[e.col]) ok = put(FILTER_COLUMN[e.col]!, [e.val]);
     else if (e.op === "active") ok = put("year", e.years.map(String));
-    else if (e.op === "null" && e.col === "ended") ok = put("status", [e.not ? "Past" : "Current"]);
     if (!ok) return null;
   }
   return { filters, sort, dir };

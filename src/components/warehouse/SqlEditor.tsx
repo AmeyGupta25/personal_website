@@ -1,10 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTypewriter } from "@/hooks/use-typewriter";
 import { CircleHelp, Play, RotateCcw, TriangleAlert } from "lucide-react";
-import { COLUMNS, tokenize } from "@/lib/sql";
+import { COLUMNS, complete, tokenize } from "@/lib/sql";
+import { completionValues } from "@/lib/warehouse";
 
 interface Props {
   value: string;
+  /** Queries that ran, oldest first: ↑ and ↓ step through them. */
+  history?: string[];
   /** Type `value` out once on load (read-only while it types), then hand over to editing. */
   typeIn?: boolean;
   onTyped?: () => void;
@@ -72,6 +75,7 @@ const Highlighted = ({ sql, error }: { sql: string; error: SqlError }) => {
 
 const SqlEditor = ({
   value,
+  history = [],
   typeIn = false,
   onTyped,
   error,
@@ -115,6 +119,45 @@ const SqlEditor = ({
   }, [typeIn, fontsReady, done]);
   const shown = typeIn ? typed : value;
   const area = useRef<HTMLTextAreaElement>(null);
+
+  // completion: suggestions for the word at the caret; Tab takes the first, Esc hides them
+  const [caret, setCaret] = useState<number | null>(null);
+  const [hidden, setHidden] = useState(false);
+  const suggest = useMemo(
+    () =>
+      typeIn || caret == null || hidden
+        ? null
+        : complete(shown, caret, completionValues),
+    [typeIn, caret, hidden, shown],
+  );
+  const options = suggest?.options ?? [];
+  const placeCaret = (pos: number) =>
+    requestAnimationFrame(() => {
+      area.current?.setSelectionRange(pos, pos);
+      setCaret(pos);
+    });
+  const accept = (opt: string) => {
+    if (!suggest || caret == null) return;
+    const close = suggest.quoted && shown[caret] !== "'" ? "'" : "";
+    const space = !suggest.quoted && !opt.endsWith("(") && shown[caret] !== " " ? " " : "";
+    const insert = opt + close + space;
+    onChange(shown.slice(0, suggest.from) + insert + shown.slice(caret));
+    placeCaret(suggest.from + insert.length);
+  };
+  const trackCaret = (e: { currentTarget: HTMLTextAreaElement }) => {
+    const t = e.currentTarget;
+    setCaret(t.selectionStart === t.selectionEnd ? t.selectionStart : null);
+  };
+
+  // history: ↑ on the first line goes back, ↓ on the last line comes forward
+  const [step, setStep] = useState<number | null>(null);
+  useEffect(() => setStep(null), [history.length]);
+  const recall = (to: number) => {
+    setStep(to);
+    const text = history[to];
+    onChange(text);
+    placeCaret(text.length);
+  };
   const shared =
     "col-start-1 row-start-1 m-0 whitespace-pre-wrap break-words [font-variant-ligatures:none] px-4 py-3.5 font-mono text-[13.5px] font-semibold leading-[1.5] md:px-5 md:py-4 md:text-[18px]";
   return (
@@ -156,11 +199,38 @@ const SqlEditor = ({
               rows={1}
               value={shown}
               readOnly={typeIn}
-              onChange={(e) => onChange(e.target.value)}
+              onChange={(e) => {
+                setHidden(false);
+                trackCaret(e);
+                onChange(e.target.value);
+              }}
+              onSelect={trackCaret}
+              onFocus={trackCaret}
+              onBlur={() => setCaret(null)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                   e.preventDefault();
                   onRun();
+                  return;
+                }
+                if (options.length && e.key === "Tab" && !e.shiftKey) {
+                  e.preventDefault();
+                  accept(options[0]);
+                  return;
+                }
+                if (options.length && e.key === "Escape") {
+                  e.preventDefault();
+                  setHidden(true);
+                  return;
+                }
+                const t = e.currentTarget;
+                const flat = t.selectionStart === t.selectionEnd;
+                if (flat && history.length && e.key === "ArrowUp" && !t.value.slice(0, t.selectionStart).includes("\n")) {
+                  e.preventDefault();
+                  recall(step == null ? history.length - 1 : Math.max(0, step - 1));
+                } else if (flat && step != null && e.key === "ArrowDown" && !t.value.slice(t.selectionEnd).includes("\n")) {
+                  e.preventDefault();
+                  if (step < history.length - 1) recall(step + 1);
                 }
               }}
               spellCheck={false}
@@ -215,6 +285,26 @@ const SqlEditor = ({
         </div>
       </div>
 
+      {options.length > 0 && (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5" aria-label="Suggestions" role="group">
+          {options.map((o, i) => (
+            <button
+              key={o}
+              type="button"
+              // keep the caret in the editor
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => accept(o)}
+              className={`rounded-md border-[1.5px] px-2 py-0.5 font-mono text-[13px] font-semibold ${i === 0 ? "border-wh-ink bg-wh-hl" : "border-wh-chip bg-wh-paper hover:border-wh-ink"}`}
+            >
+              {o}
+            </button>
+          ))}
+          <span className="ml-1 text-[12px] text-wh-mute">
+            <kbd className="font-mono">Tab</kbd> to complete · <kbd className="font-mono">Esc</kbd> to hide
+          </span>
+        </div>
+      )}
+
       {help && (
         <div
           id="sql-help"
@@ -232,6 +322,13 @@ const SqlEditor = ({
             <code className="font-mono">skills && ARRAY['Python', 'SQL']</code>.
             Also: AND, OR, NOT, IN, LIKE / ILIKE with %, IS NULL, ORDER BY,
             LIMIT.
+          </p>
+          <p className="mt-1 text-wh-body">
+            Count things with{" "}
+            <code className="font-mono">SELECT skills, COUNT(*) FROM amey.work GROUP BY skills</code>
+            , and see every column with{" "}
+            <code className="font-mono">DESCRIBE amey.work</code>. Tab completes
+            names and values; ↑ and ↓ step through queries you've run.
           </p>
         </div>
       )}

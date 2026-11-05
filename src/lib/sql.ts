@@ -1,7 +1,8 @@
 // A small SQL engine for the one table on the page. It speaks the dialect the filters write
-// (Postgres-flavoured: &&, @>, = ANY(...), active_in(...)) plus everyday SELECT / WHERE / ORDER BY / LIMIT.
+// (Postgres-flavoured: &&, @>, = ANY(...), active_in(...)) plus everyday SELECT / WHERE / ORDER BY / LIMIT,
+// COUNT(*) with GROUP BY (a list column counts each of its values, the way unnest would), and DESCRIBE.
 
-import { monthIndex, yearsActive, type WorkRow } from "@/data/work";
+import { monthIndex, status, yearsActive, type WorkRow } from "@/data/work";
 
 // ---------- tokens ----------
 export type TokKind = "kw" | "id" | "str" | "num" | "sym" | "ws" | "bad";
@@ -15,7 +16,7 @@ export interface Tok {
 
 const KEYWORDS = new Set([
   "SELECT", "FROM", "WHERE", "AND", "OR", "NOT", "IN", "IS", "NULL", "LIKE", "ILIKE",
-  "ORDER", "BY", "ASC", "DESC", "LIMIT", "ARRAY", "ANY",
+  "ORDER", "BY", "ASC", "DESC", "LIMIT", "ARRAY", "ANY", "GROUP", "COUNT", "DESCRIBE",
 ]);
 const SYMBOLS = ["&&", "@>", "<=", ">=", "<>", "!=", "=", "<", ">", ",", "(", ")", "[", "]", ";", "*"];
 
@@ -77,6 +78,22 @@ const ALIASES: Record<string, Column> = { company: "name", title: "name", skill:
 /** What `SELECT *` shows: the table's main columns. */
 export const DEFAULT_COLUMNS: Column[] = ["name", "role", "period", "impact"];
 
+/** What DESCRIBE amey.work prints: every column, its type and what it holds. */
+export const SCHEMA: { column: Column; type: string; note: string }[] = [
+  { column: "name", type: "text", note: "The organisation or project" },
+  { column: "role", type: "text", note: "My title, or what the project is" },
+  { column: "type", type: "text", note: "Internship, Research, Project or Education" },
+  { column: "status", type: "text", note: "Current or Past" },
+  { column: "period", type: "text", note: "When, shown as Mon YYYY – Mon YYYY" },
+  { column: "impact", type: "text", note: "The headline number; sorts by size of impact" },
+  { column: "location", type: "text", note: "City, or NULL for projects" },
+  { column: "started", type: "date", note: "Compare with a year (2025) or 'YYYY-MM'" },
+  { column: "ended", type: "date", note: "NULL while ongoing" },
+  { column: "skills", type: "text[]", note: "Languages, tools and platforms used" },
+  { column: "areas", type: "text[]", note: "What the work was: pipelines, ML, backend…" },
+  { column: "years", type: "text[]", note: "Calendar years the work spans" },
+];
+
 const resolveColumn = (raw: string): Column | null => {
   const c = raw.toLowerCase();
   if ((COLUMNS as string[]).includes(c)) return c as Column;
@@ -96,12 +113,21 @@ export type Expr =
   | { op: "any"; col: Column; val: string; not: boolean }
   | { op: "active"; years: number[] };
 
+/** "count" orders a grouped query by its COUNT(*). */
+export type OrderCol = Column | "count";
+
 export interface Query {
   columns: Column[];
   star: boolean;
   where: Expr | null;
-  order: { col: Column; dir: 1 | -1 }[];
+  order: { col: OrderCol; dir: 1 | -1 }[];
   limit: number | null;
+  /** SELECT COUNT(*): the result is counts, not rows. */
+  count: boolean;
+  /** GROUP BY this column; null when ungrouped. */
+  group: Column | null;
+  /** DESCRIBE amey.work (or \d): show the schema. */
+  describe: boolean;
 }
 
 export class SqlError extends Error {
@@ -111,7 +137,11 @@ export class SqlError extends Error {
 }
 
 // ---------- parser ----------
+const DESCRIBE_RE = /^\s*(?:describe|desc|\\d\+?)\s*(?:amey\.work|work)?\s*;?\s*$/i;
+const EMPTY = { star: false, where: null, order: [], limit: null, count: false, group: null } as const;
+
 export const parse = (src: string): Query => {
+  if (DESCRIBE_RE.test(src)) return { ...EMPTY, columns: [], order: [], describe: true };
   const toks = tokenize(src).filter((t) => t.kind !== "ws");
   let i = 0;
   const peek = () => toks[i];
@@ -242,19 +272,35 @@ export const parse = (src: string): Query => {
     return l;
   };
 
-  if (!toks.length) throw new SqlError("Type a query, starting with SELECT.", 0);
-  eatKw("SELECT", "Queries start with SELECT.");
+  // COUNT(*)
+  const countStar = () => {
+    eatKw("COUNT");
+    eatSym("(", "Expected COUNT(*).");
+    eatSym("*", "Only COUNT(*) is supported.");
+    eatSym(")", "Expected COUNT(*).");
+  };
+
+  if (!toks.length) throw new SqlError("Type a query, starting with SELECT, or DESCRIBE amey.work.", 0);
+  if (isKw("DESCRIBE")) throw new SqlError("Try DESCRIBE amey.work on its own.", at());
+  eatKw("SELECT", "Queries start with SELECT (or try DESCRIBE amey.work).");
   let star = false;
-  let columns: Column[];
+  let count = false;
+  const columns: Column[] = [];
+  const selectItem = () => {
+    if (isKw("COUNT")) {
+      countStar();
+      count = true;
+    } else columns.push(column());
+  };
   if (isSym("*")) {
     i++;
     star = true;
-    columns = DEFAULT_COLUMNS;
+    columns.push(...DEFAULT_COLUMNS);
   } else {
-    columns = [column()];
+    selectItem();
     while (isSym(",")) {
       i++;
-      columns.push(column());
+      selectItem();
     }
   }
   eatKw("FROM", "Expected FROM after the column list.");
@@ -267,13 +313,36 @@ export const parse = (src: string): Query => {
     i++;
     where = orExpr();
   }
+  let group: Column | null = null;
+  if (isKw("GROUP")) {
+    i++;
+    eatKw("BY", "Expected BY after GROUP.");
+    const gAt = at();
+    group = column();
+    if (star) throw new SqlError(`With GROUP BY, select the column and COUNT(*), like SELECT ${group}, COUNT(*).`, 0);
+    const extra = columns.find((c) => c !== group);
+    if (extra) throw new SqlError(`With GROUP BY ${group}, you can only select ${group} and COUNT(*).`, gAt);
+  } else if (count && columns.length) {
+    throw new SqlError(`To count per ${columns[0]}, add GROUP BY ${columns[0]}.`, at());
+  }
+  const grouped = count || !!group;
   const order: Query["order"] = [];
   if (isKw("ORDER")) {
     i++;
     eatKw("BY", "Expected BY after ORDER.");
     do {
       if (isSym(",")) i++;
-      const col = column();
+      let col: OrderCol;
+      if (isKw("COUNT") || (peek()?.kind === "id" && peek().value === "count")) {
+        if (!grouped) throw new SqlError("ORDER BY COUNT(*) needs a GROUP BY.", at());
+        if (isKw("COUNT")) countStar();
+        else i++;
+        col = "count";
+      } else {
+        const cAt = at();
+        col = column();
+        if (grouped && col !== group) throw new SqlError(`A grouped query can only be ordered by ${group ?? "its count"} or COUNT(*).`, cAt);
+      }
       let dir: 1 | -1 = 1;
       if (isKw("ASC")) i++;
       else if (isKw("DESC")) {
@@ -293,14 +362,14 @@ export const parse = (src: string): Query => {
   }
   if (isSym(";")) i++;
   if (i < toks.length) throw new SqlError(`Didn't expect “${toks[i].text}” here.`, toks[i].start);
-  return { columns, star, where, order, limit };
+  return { columns, star, where, order, limit, count, group, describe: false };
 };
 
 // ---------- evaluation ----------
 type Val = string | number | null | string[];
 const valueOf = (r: WorkRow, c: Column): Val => {
   switch (c) {
-    case "status": return r.from && !r.to ? "Current" : "Past";
+    case "status": return status(r);
     case "period": return r.from ? `${r.from[0]}-${String(r.from[1]).padStart(2, "0")}` : null;
     case "location": return r.location ?? null;
     case "started": return r.from ? monthIndex(r.from) : null;
@@ -372,12 +441,52 @@ const test = (r: WorkRow, e: Expr): boolean => {
   }
 };
 
-const sortKey = (r: WorkRow, c: Column): string | number => {
+const sortKey = (r: WorkRow, c: OrderCol): string | number => {
+  if (c === "count") return 0;
   if (c === "impact") return r.impactRank;
   if (c === "started" || c === "period") return r.from ? monthIndex(r.from) : -Infinity;
   if (c === "ended") return r.to ? monthIndex(r.to) : r.from ? Infinity : -Infinity;
   const v = valueOf(r, c);
   return Array.isArray(v) ? v.length : v == null ? "" : typeof v === "number" ? v : v.toLowerCase();
+};
+
+/** One line of a grouped result: the group's value (null for a plain COUNT(*)) and how many rows hold it. */
+export interface CountRow {
+  key: string | null;
+  count: number;
+}
+
+/** A display value for grouping and ordering; list columns give each of their values. */
+const groupValues = (r: WorkRow, c: Column): string[] => {
+  if (c === "started" || c === "ended") {
+    const ym = c === "started" ? r.from : r.to;
+    return [ym ? `${ym[0]}-${String(ym[1]).padStart(2, "0")}` : "NULL"];
+  }
+  if (c === "impact") return [r.impact];
+  const v = valueOf(r, c);
+  if (Array.isArray(v)) return v;
+  return [v == null ? "NULL" : String(v)];
+};
+
+export const runGrouped = (q: Query, rows: WorkRow[]): CountRow[] => {
+  const hit = rows.filter((r) => !q.where || test(r, q.where));
+  if (!q.group) return [{ key: null, count: hit.length }];
+  const n = new Map<string, number>();
+  for (const r of hit) for (const v of new Set(groupValues(r, q.group))) n.set(v, (n.get(v) ?? 0) + 1);
+  let out = [...n.entries()].map(([key, count]) => ({ key, count }));
+  // with no ORDER BY, the biggest groups come first, then alphabetical
+  const order = q.order.length ? q.order : [{ col: "count" as OrderCol, dir: -1 as const }];
+  out.sort((a, b) => {
+    for (const { col, dir } of order) {
+      const x = col === "count" ? a.count : a.key!.toLowerCase();
+      const y = col === "count" ? b.count : b.key!.toLowerCase();
+      if (x < y) return -dir;
+      if (x > y) return dir;
+    }
+    return a.key!.localeCompare(b.key!);
+  });
+  if (q.limit != null) out = out.slice(0, q.limit);
+  return out;
 };
 
 export const run = (q: Query, rows: WorkRow[]): WorkRow[] => {
@@ -393,4 +502,33 @@ export const run = (q: Query, rows: WorkRow[]): WorkRow[] => {
     });
   }
   return q.limit != null ? out.slice(0, q.limit) : out;
+};
+
+// ---------- completion ----------
+const COMPLETE_WORDS = [
+  ...[...KEYWORDS].filter((k) => k !== "DESC" && k !== "ASC").concat(["ASC", "DESC", "COUNT(*)", "GROUP BY", "ORDER BY", "IS NULL"]),
+  ...COLUMNS,
+  "amey.work",
+  "active_in(",
+];
+
+/** What the text before the caret could complete to: a keyword, column or table outside quotes,
+    or (inside an open quote) one of the table's real values. `from` is where the replaced word starts. */
+export const complete = (src: string, at: number, values: string[]): { from: number; options: string[]; quoted: boolean } => {
+  const before = src.slice(0, at);
+  const quotes = (before.match(/'/g) ?? []).length;
+  if (quotes % 2 === 1) {
+    const from = before.lastIndexOf("'") + 1;
+    const prefix = before.slice(from).toLowerCase();
+    if (!prefix) return { from, options: [], quoted: true };
+    const starts = values.filter((v) => v.toLowerCase().startsWith(prefix));
+    const inside = values.filter((v) => !starts.includes(v) && v.toLowerCase().includes(prefix));
+    return { from, options: [...starts, ...inside].filter((v) => v.toLowerCase() !== prefix).slice(0, 6), quoted: true };
+  }
+  const word = before.match(/[A-Za-z_][A-Za-z0-9_.]*$/)?.[0] ?? "";
+  // nothing to suggest mid-word, or for a single letter
+  if (word.length < 2 || /[A-Za-z0-9_]/.test(src[at] ?? "")) return { from: at, options: [], quoted: false };
+  const w = word.toLowerCase();
+  const options = COMPLETE_WORDS.filter((c) => c.toLowerCase().startsWith(w) && c.toLowerCase() !== w);
+  return { from: at - word.length, options: [...new Set(options)].slice(0, 6), quoted: false };
 };

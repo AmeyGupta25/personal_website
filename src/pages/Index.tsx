@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
   Copy,
   Github,
+  Link2,
   Linkedin,
   Mail,
   Shuffle,
@@ -14,6 +15,7 @@ import {
   activeCount,
   emptyFilters,
   filterRows,
+  GROUP_OF,
   pickQuick,
   sortRows,
   queryToFilters,
@@ -24,10 +26,24 @@ import {
   type QuickQuestion,
   type SortKey,
 } from "@/lib/warehouse";
-import { DEFAULT_COLUMNS, parse, run, SqlError, type Query } from "@/lib/sql";
+import {
+  DEFAULT_COLUMNS,
+  parse,
+  run,
+  runGrouped,
+  SqlError,
+  type Query,
+} from "@/lib/sql";
 import SqlEditor from "@/components/warehouse/SqlEditor";
 import FilterPanel from "@/components/warehouse/FilterPanel";
 import ResultsTable from "@/components/warehouse/ResultsTable";
+import { CountTable, SchemaTable } from "@/components/warehouse/AggregateViews";
+
+// a shared link carries its query (?q=) and open row (?row=); the opening query needs neither
+const params = new URLSearchParams(location.search);
+const sharedQuery = params.get("q");
+const sharedRow = params.get("row");
+const DEFAULT_SQL = sqlText(emptyFilters(), "recent", 1);
 
 const contacts = [
   { href: `mailto:${person.email}`, label: "Email", Icon: Mail, primary: true },
@@ -39,7 +55,7 @@ const Index = () => {
   const [filters, setFilters] = useState<Filters>(emptyFilters);
   const [sort, setSort] = useState<SortKey>("recent");
   const [dir, setDir] = useState<1 | -1>(1);
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(sharedRow);
   const [typed, setTyped] = useState(false);
   const [runId, setRunId] = useState(0);
   const [quick, setQuick] = useState<number | null>(null);
@@ -49,20 +65,24 @@ const Index = () => {
   );
   const [filtersOpen, setFiltersOpen] = useState(false);
   // mailto does nothing for people without a mail app, so the address can be copied too
-  const [copied, setCopied] = useState(false);
-  const copyEmail = async () => {
+  const [copied, setCopied] = useState<"email" | "link" | null>(null);
+  const copy = async (what: "email" | "link", text: string) => {
     try {
-      await navigator.clipboard.writeText(person.email);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
+      await navigator.clipboard.writeText(text);
+      setCopied(what);
+      window.setTimeout(() => setCopied(null), 2000);
     } catch {
-      window.prompt("Copy my email:", person.email);
+      window.prompt("Copy:", text);
     }
   };
 
   // what the visitor has typed; null while the editor shows the filters' own query
-  const [draft, setDraft] = useState<string | null>(null);
-  const [debounced, setDebounced] = useState<string | null>(null);
+  const [draft, setDraft] = useState<string | null>(sharedQuery);
+  const [debounced, setDebounced] = useState<string | null>(sharedQuery);
+  // queries that ran, newest last, for ↑ / ↓ in the editor
+  const [history, setHistory] = useState<string[]>([]);
+  // a shared link's row stays open through its own query's first run
+  const keepRow = useRef(!!sharedRow);
   const [custom, setCustom] = useState<{ q: Query; mapped: boolean } | null>(
     null,
   );
@@ -85,7 +105,12 @@ const Index = () => {
       const mapped = queryToFilters(q);
       setSqlError(null);
       setCustom({ q, mapped: !!mapped });
-      setOpenId(null);
+      if (keepRow.current) keepRow.current = false;
+      else setOpenId(null);
+      const text = debounced.trim();
+      setHistory((h) =>
+        h[h.length - 1] === text ? h : [...h, text].slice(-50),
+      );
       // a query the filters can express moves the filters to match
       if (mapped) {
         setFilters(mapped.filters);
@@ -101,13 +126,47 @@ const Index = () => {
     }
   }, [debounced]);
 
+  const view: "rows" | "counts" | "schema" = !custom
+    ? "rows"
+    : custom.q.describe
+      ? "schema"
+      : custom.q.count || custom.q.group
+        ? "counts"
+        : "rows";
   const results = useMemo(
     () =>
       custom
-        ? run(custom.q, allRows)
+        ? view === "rows"
+          ? run(custom.q, allRows)
+          : []
         : sortRows(filterRows(filters), sort, dir),
-    [custom, filters, sort, dir],
+    [custom, view, filters, sort, dir],
   );
+  const counts = useMemo(
+    () => (custom && view === "counts" ? runGrouped(custom.q, allRows) : []),
+    [custom, view],
+  );
+  const sql = draft ?? sqlText(filters, sort, dir);
+
+  // the address bar always holds a link to what's on screen
+  useEffect(() => {
+    if (!typed) return;
+    const next = new URLSearchParams(location.search);
+    next.delete("q");
+    next.delete("row");
+    if (sql.trim() !== DEFAULT_SQL) next.set("q", sql.trim());
+    if (openId) next.set("row", openId);
+    const qs = next.toString();
+    window.history.replaceState(null, "", qs ? `?${qs}` : location.pathname);
+  }, [typed, sql, openId]);
+
+  // a shared row is scrolled into view once the opening query has run
+  useEffect(() => {
+    if (typed && sharedRow)
+      document
+        .getElementById(`row-${sharedRow}`)
+        ?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [typed]);
   const columns = custom ? custom.q.columns : DEFAULT_COLUMNS;
   const standard =
     !custom ||
@@ -126,6 +185,20 @@ const Index = () => {
     setDir(nextDir);
     setOpenId(null);
     setRunId((n) => n + 1);
+  };
+  const runSql = (text: string) => {
+    setDraft(text);
+    setDebounced(text);
+    setRunId((n) => n + 1);
+  };
+  // a count's value opens the rows that hold it
+  const pickGroup = (value: string) => {
+    const key = custom?.q.group && GROUP_OF[custom.q.group];
+    if (!key) return;
+    setQuick(null);
+    const next = emptyFilters();
+    next.selected[key] = [value];
+    rerun(next, "impact", 1);
   };
   const toggle = (key: GroupKey, value: string) => {
     const cur = filters.selected[key];
@@ -192,16 +265,18 @@ const Index = () => {
           ))}
           <button
             type="button"
-            onClick={copyEmail}
+            onClick={() => copy("email", person.email)}
             title={`Copy ${person.email}`}
             className="inline-flex items-center gap-2 rounded-lg border-2 border-wh-ink bg-wh-paper px-3.5 py-2 text-[14px] font-bold transition-colors hover:bg-wh-soft"
           >
-            {copied ? (
+            {copied === "email" ? (
               <Check className="h-4 w-4" aria-hidden />
             ) : (
               <Copy className="h-4 w-4" aria-hidden />
             )}
-            <span aria-live="polite">{copied ? "Copied" : "Copy email"}</span>
+            <span aria-live="polite">
+              {copied === "email" ? "Copied" : "Copy email"}
+            </span>
           </button>
         </nav>
       </header>
@@ -210,16 +285,17 @@ const Index = () => {
         <div className="px-4 md:px-12">
           {/* one editor throughout: it types the opening query itself, then becomes editable in place */}
           <SqlEditor
-            value={draft ?? sqlText(filters, sort, dir)}
+            value={sql}
             typeIn={!typed}
+            history={history}
             onTyped={() => setTyped(true)}
             error={sqlError}
             custom={draft !== null}
-            onChange={setDraft}
-            onRun={() => {
-              setDebounced(draft ?? sqlText(filters, sort, dir));
-              setRunId((n) => n + 1);
+            onChange={(text) => {
+              setDraft(text);
+              setQuick(null);
             }}
+            onRun={() => runSql(sql)}
             onReset={() => rerun(filters)}
           />
         </div>
@@ -238,8 +314,9 @@ const Index = () => {
               type="button"
               aria-pressed={quick === i}
               onClick={() => {
-                const { filters: f, sort: s } = q.apply();
                 setQuick(i);
+                if (q.sql) return runSql(q.sql);
+                const { filters: f, sort: s } = q.apply();
                 rerun(f, s, 1);
               }}
               className={`rounded-full border-2 border-wh-ink px-3.5 py-1.5 text-[14px] font-bold transition-colors ${quick === i ? "bg-wh-ink text-wh-paper" : "bg-wh-paper hover:bg-wh-soft"}`}
@@ -289,9 +366,11 @@ const Index = () => {
           <section id="results" aria-label="Results" className="min-w-0">
             <div className="flex min-h-[28px] flex-wrap items-center gap-2 pb-1 font-mono text-[13px] text-wh-mute">
               <span aria-live="polite">
-                {results.length} of {allRows.length} rows
-                {results.length ? " · open a row for details" : ""}
-                {paused ? " · your query" : ""}
+                {view === "schema"
+                  ? "amey.work · 12 columns"
+                  : view === "counts"
+                    ? `${counts.length} ${counts.length === 1 ? "row" : "rows"} · counted over ${allRows.length} rows${custom?.q.group && GROUP_OF[custom.q.group] ? " · pick a value to see its rows" : ""}`
+                    : `${results.length} of ${allRows.length} rows${results.length ? " · open a row for details" : ""}${paused ? " · your query" : ""}`}
               </span>
               {!paused &&
                 chips.map(({ k, v }) => (
@@ -306,25 +385,58 @@ const Index = () => {
                     <X className="h-3 w-3" aria-hidden />
                   </button>
                 ))}
+              {typed && (
+                <button
+                  type="button"
+                  onClick={() => copy("link", location.href)}
+                  className="ml-auto inline-flex items-center gap-1.5 font-sans text-[13px] font-bold text-wh-ink underline underline-offset-4"
+                  title="Copy a link that opens this exact query"
+                >
+                  {copied === "link" ? (
+                    <Check className="h-3.5 w-3.5" aria-hidden />
+                  ) : (
+                    <Link2 className="h-3.5 w-3.5" aria-hidden />
+                  )}
+                  <span aria-live="polite">
+                    {copied === "link"
+                      ? "Link copied"
+                      : "Copy link to this view"}
+                  </span>
+                </button>
+              )}
             </div>
-            <ResultsTable
-              rows={typed ? results : []}
-              pending={!typed}
-              columns={columns}
-              standard={standard}
-              sortable={!paused}
-              emptyText={
-                paused
-                  ? "Your query returned no rows."
-                  : "No rows match every filter."
-              }
-              sort={sort}
-              runId={runId}
-              openId={openId}
-              onOpen={setOpenId}
-              onSort={onSort}
-              onReset={clear}
-            />
+            {typed && view === "schema" && <SchemaTable />}
+            {typed && view === "counts" && (
+              <CountTable
+                rows={counts}
+                group={custom!.q.group}
+                onPick={
+                  custom?.q.group && GROUP_OF[custom.q.group]
+                    ? pickGroup
+                    : undefined
+                }
+              />
+            )}
+            {view === "rows" && (
+              <ResultsTable
+                rows={typed ? results : []}
+                pending={!typed}
+                columns={columns}
+                standard={standard}
+                sortable={!paused}
+                emptyText={
+                  paused
+                    ? "Your query returned no rows."
+                    : "No rows match every filter."
+                }
+                sort={sort}
+                runId={runId}
+                openId={openId}
+                onOpen={setOpenId}
+                onSort={onSort}
+                onReset={clear}
+              />
+            )}
           </section>
         </div>
       </main>

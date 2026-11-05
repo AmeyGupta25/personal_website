@@ -7,7 +7,7 @@ const names = (sql: string) => run(parse(sql), rows).map((r) => r.name);
 
 describe("sql engine", () => {
   it("runs the default query", () => {
-    expect(names("SELECT name, role, period, impact FROM amey.work ORDER BY started DESC;")).toHaveLength(7);
+    expect(names("SELECT name, role, period, impact FROM amey.work ORDER BY started DESC;")).toHaveLength(rows.length);
   });
   it("filters by skill, case-insensitively", () => {
     expect(names("SELECT * FROM amey.work WHERE 'airflow' = ANY(skills)")).toEqual(["Peale Davies"]);
@@ -46,9 +46,44 @@ describe("sql engine", () => {
 describe("quick questions", () => {
   it("every question in the pool returns at least one row", async () => {
     const { QUICK_POOL } = await import("@/lib/warehouse");
+    const { runGrouped } = await import("@/lib/sql");
     for (const q of QUICK_POOL) {
-      const { filters } = q.apply();
-      expect(filterRows(filters).length, q.label).toBeGreaterThan(0);
+      if (q.sql) expect(runGrouped(parse(q.sql), rows).length, q.label).toBeGreaterThan(0);
+      else expect(filterRows(q.apply().filters).length, q.label).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("counts and schema", () => {
+  it("counts rows, and counts each value of a list column per group", async () => {
+    const { runGrouped } = await import("@/lib/sql");
+    expect(runGrouped(parse("SELECT COUNT(*) FROM amey.work WHERE type = 'Internship'"), rows)).toEqual([{ key: null, count: 4 }]);
+    const skills = runGrouped(parse("SELECT skills, COUNT(*) FROM amey.work GROUP BY skills ORDER BY COUNT(*) DESC LIMIT 3"), rows);
+    expect(skills).toHaveLength(3);
+    const python = rows.filter((r) => r.skills.includes("Python")).length;
+    expect(skills.find((s) => s.key === "Python")?.count ?? python).toBe(python);
+    expect(skills[0].count).toBeGreaterThanOrEqual(skills[1].count);
+    expect(runGrouped(parse("SELECT type, COUNT(*) FROM work GROUP BY type ORDER BY type"), rows).map((r) => r.key)).toEqual(["Education", "Internship", "Project", "Research"]);
+  });
+  it("explains grouping mistakes", () => {
+    expect(() => parse("SELECT name, COUNT(*) FROM amey.work")).toThrow(/GROUP BY name/);
+    expect(() => parse("SELECT name, role FROM amey.work GROUP BY name")).toThrow(/only select name/);
+    expect(() => parse("SELECT * FROM amey.work ORDER BY COUNT(*)")).toThrow(/needs a GROUP BY/);
+  });
+  it("describes the table", () => {
+    for (const q of ["DESCRIBE amey.work", "describe work;", "\\d amey.work", "\\d", "DESC amey.work"]) expect(parse(q).describe, q).toBe(true);
+    expect(queryToFilters(parse("SELECT skills, COUNT(*) FROM amey.work GROUP BY skills"))).toBeNull();
+  });
+});
+
+describe("completion", () => {
+  it("completes keywords and columns outside quotes, and real values inside them", async () => {
+    const { complete } = await import("@/lib/sql");
+    expect(complete("SEL", 3, []).options).toContain("SELECT");
+    expect(complete("SELECT na", 9, []).options).toContain("name");
+    const inQuote = complete("WHERE 'pyth", 11, ["Python", "PyTorch", "SQL"]);
+    expect(inQuote).toMatchObject({ from: 7, quoted: true });
+    expect(inQuote.options).toEqual(["Python"]);
+    expect(complete("SELECT n", 8, []).options).toEqual([]);
   });
 });
