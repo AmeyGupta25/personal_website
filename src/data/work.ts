@@ -82,7 +82,7 @@ export const rows: WorkRow[] = [
       "Designed the database schema and executed zero-downtime PostgreSQL migrations with Drizzle ORM, managing connections at the edge via Cloudflare Hyperdrive.",
       "Built an upsert-only content sync pipeline that ingests and classifies external RSS feeds, with prune-guarded caching to keep data available during upstream outages.",
     ],
-    skills: ["PostgreSQL", "SQL", "Hono", "OpenAPI", "REST APIs", "Cloudflare Workers", "Cloudflare Hyperdrive", "Drizzle ORM"],
+    skills: ["PostgreSQL", "SQL", "Hono", "OpenAPI", "REST APIs", "Cloudflare", "Cloudflare Workers", "Cloudflare Hyperdrive", "Drizzle ORM"],
     areas: ["Backend & APIs", "Databases & warehousing", "Data pipelines & ETL"],
   },
   {
@@ -95,15 +95,16 @@ export const rows: WorkRow[] = [
     location: "San Diego, CA",
     impact: "7–18× faster",
     impactRank: 6,
-    plain: "Made cancer-research computations 7–18× faster and built the models behind a published research preprint.",
-    metrics: ["7–18× speedups", "20,000+ gene pairs", "500+ cancer cell lines", "93% predictive accuracy"],
+    plain: "Made cancer-research computations 7–18× faster and built the models behind a public research preprint I first-authored.",
+    metrics: ["7–18× speedups", "20,000+ gene pairs", "500+ cancer cell lines", "93% predictive accuracy", "First-author preprint"],
     bullets: [
       "Built a high-performance compute pipeline by migrating legacy R dependencies to optimized Cython, achieving 7–18× speedups across 20,000+ gene pairs.",
       "Architected an ETL pipeline integrating multi-omics datasets (transcriptional signatures, PRISM drug screens) across 500+ cancer cell lines into a centralized PostgreSQL database.",
-      "Built the clustering and Bayesian nomogram models for a cancer analytics manuscript (public on BioRxiv, submitted to PLOS Computational Biology), reaching 93% predictive accuracy across 590 tumor cell lines.",
+      "Built the clustering and Bayesian nomogram models for a first-author cancer analytics manuscript (public on bioRxiv, submitted to PLOS Computational Biology), reaching 93% predictive accuracy across 590 tumor cell lines.",
     ],
     skills: ["Python", "Cython", "R", "SQL", "PostgreSQL", "Bayesian modelling", "Clustering", "Bash", "Pandas", "NumPy", "scikit-learn", "PyTorch"],
     areas: ["Data pipelines & ETL", "Machine learning", "Performance tuning", "Databases & warehousing", "Research"],
+    links: [{ label: "Preprint on bioRxiv", href: "https://www.biorxiv.org/content/10.64898/2026.10.10.758174v1" }],
   },
   {
     id: "profai",
@@ -164,7 +165,7 @@ export const rows: WorkRow[] = [
       "Delivered technical evaluations and gap analyses directly to the CEO and leadership, shaping product decisions and cutting review cycles by 20%.",
       "Resolved query bottlenecks across 8+ enterprise APIs by benchmarking load times and restructuring indexes, improving response latency by 15%.",
     ],
-    skills: ["SQL", "AWS", "Database indexing", "Product management", "OpenAPI", "Cloudflare"],
+    skills: ["SQL", "AWS", "Knowledge graphs", "Semantic AI", "Database indexing", "Product management"],
     areas: ["Product & strategy", "Performance tuning", "Backend & APIs", "Databases & warehousing", "AI & LLMs"],
   },
   {

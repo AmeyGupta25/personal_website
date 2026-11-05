@@ -67,7 +67,7 @@ All metrics come from Amey's current résumé (`~/Downloads/Amey_Gupta_Resume.pd
 - **UC San Diego Health, Computational Cancer Analytics Lab.** Data Engineering Research Assistant, Mar 2026 – present.
   - Migrated R to Cython for 7–18x speedups across 20,000+ gene pairs.
   - Built a multi-omics ETL into PostgreSQL covering 500+ cancer cell lines.
-  - Clustering and Bayesian nomogram models reached 93% predictive accuracy across 590 tumour cell lines. The manuscript is public on BioRxiv and submitted to PLOS Computational Biology. The preprint URL has not been provided yet.
+  - Clustering and Bayesian nomogram models reached 93% predictive accuracy across 590 tumour cell lines. Amey is **first author** on the manuscript, which is public on bioRxiv (https://www.biorxiv.org/content/10.64898/2026.10.10.758174v1) and submitted to PLOS Computational Biology.
 - **Peale Davies**, Ridgewood NJ, fintech. Data Engineering Intern, Oct 2025 – Feb 2026.
   - Dockerised scrapers normalising 10,000+ records from 70+ SEC and registry sources.
   - Airflow plus a PostgreSQL warehouse powering a fintech AI tool.
@@ -87,6 +87,7 @@ All metrics come from Amey's current résumé (`~/Downloads/Amey_Gupta_Resume.pd
   - Data & ML: Pandas, NumPy, scikit-learn, PyTorch, Apache Spark, Kafka, Snowflake, ETL, BeautifulSoup, LLMs, Airflow, dbt.
   - Cloud & infra: AWS (S3, EC2), Cloudflare (Workers, Hyperdrive), Databricks, Docker, Terraform, CI/CD, Pinecone, Vercel.
   - Tools & frameworks: FastAPI, Flask, React, SQLAlchemy, Drizzle ORM, Hono, OpenAPI, Power BI, Tableau.
+  - Per-role tags follow Amey's "Technical Skills Mapping" PDF (2026-11-05) plus the extras he confirmed role by role. Cloudflare and OpenAPI belong to the 2026 SWE role, not the 2025 TPM role, which carries Knowledge graphs and Semantic AI. The PDF's "foundational" skills (Spark, Kafka, Snowflake, Terraform, Git) have no role and stay off the site.
   - The source is `~/Downloads/Amey_Gupta_Resume.pdf`. LinkedIn's skills page also credits some skills to specific roles (for example Flask, Databricks, dbt and CI/CD to Peale Davies; Tableau and Salesforce to Quantum Design; Pandas, NumPy, scikit-learn and PyTorch to UCSD Health).
 - **Personal** (kept light): weightlifting, guitar (alt/indie and classic rock), trying new foods.
 - **Absent, so never fabricate:**
@@ -94,7 +95,6 @@ All metrics come from Amey's current résumé (`~/Downloads/Amey_Gupta_Resume.pd
   - company logos
   - a headshot
   - press
-  - the BioRxiv URL
   - usage numbers for StockPulse
 
 ## Product Principles
