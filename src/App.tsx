@@ -1,14 +1,7 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom";
 import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
-const App = () => (
-  <BrowserRouter>
-    <Routes>
-      <Route path="/" element={<Index />} />
-      <Route path="*" element={<NotFound />} />
-    </Routes>
-  </BrowserRouter>
-);
+// one page; vercel.json sends every other path here too, and it gets the "0 rows." page
+const App = () => (location.pathname === "/" ? <Index /> : <NotFound />);
 
 export default App;

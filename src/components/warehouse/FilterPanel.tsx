@@ -13,12 +13,10 @@ interface Props {
   onResume: () => void;
 }
 
-// every group starts folded; visitors open the ones they care about
-const OPEN_AT_START: GroupKey[] = [];
-
 const FilterPanel = ({ filters, open, paused, onResume, onToggle, onMode, onClear }: Props) => {
   const active = activeCount(filters);
-  const [expanded, setExpanded] = useState<Set<GroupKey>>(() => new Set(OPEN_AT_START));
+  // every group starts folded; visitors open the ones they care about
+  const [expanded, setExpanded] = useState<Set<GroupKey>>(() => new Set());
   const flip = (k: GroupKey) =>
     setExpanded((cur) => {
       const next = new Set(cur);

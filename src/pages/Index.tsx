@@ -21,6 +21,7 @@ import {
   parse,
   run,
   runGrouped,
+  SCHEMA,
   SqlError,
   type Query,
 } from "@/lib/sql";
@@ -60,8 +61,8 @@ const Index = () => {
   const [debounced, setDebounced] = useState<string | null>(sharedQuery);
   // queries that ran, newest last, for ↑ / ↓ in the editor
   const [history, setHistory] = useState<string[]>([]);
-  // a shared link's row stays open through its own query's first run
-  const keepRow = useRef(!!sharedRow);
+  // a shared link's row stays open through its own query's first run (no ?q=, no such run)
+  const keepRow = useRef(!!sharedRow && !!sharedQuery);
   const [custom, setCustom] = useState<{ q: Query; mapped: boolean } | null>(
     null,
   );
@@ -328,9 +329,9 @@ const Index = () => {
             <div className="flex min-h-[28px] flex-wrap items-center gap-2 pb-1 font-mono text-[13px] text-wh-mute">
               <span aria-live="polite">
                 {view === "schema"
-                  ? "amey.work · 12 columns"
+                  ? `amey.work · ${SCHEMA.length} columns`
                   : view === "counts"
-                    ? `${counts.length} ${counts.length === 1 ? "row" : "rows"} · counted over ${allRows.length} rows${custom?.q.group && GROUP_OF[custom.q.group] ? " · pick a value to see its rows" : ""}`
+                    ? `${counts.length} ${counts.length === 1 ? "row" : "rows"}${custom?.q.group && GROUP_OF[custom.q.group] ? " · pick a value to see its rows" : ""}`
                     : `${results.length} of ${allRows.length} rows${results.length ? " · open a row for details" : ""}${paused ? " · your query" : ""}`}
               </span>
               {!paused &&

@@ -1,7 +1,5 @@
-import { useLocation } from "react-router-dom";
-
 const NotFound = () => {
-  const { pathname } = useLocation();
+  const { pathname } = location;
   return (
     <main className="flex min-h-screen flex-col justify-center gap-5 px-4 md:px-12">
       <pre className="whitespace-pre-wrap break-words font-mono text-[15px] font-semibold md:text-[18px]">

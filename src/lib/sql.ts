@@ -444,6 +444,7 @@ const test = (r: WorkRow, e: Expr): boolean => {
 };
 
 const sortKey = (r: WorkRow, c: OrderCol): string | number => {
+  // the parser only allows ORDER BY COUNT(*) in a grouped query, so this narrows the type
   if (c === "count") return 0;
   if (c === "impact") return r.impactRank;
   if (c === "started" || c === "period") return r.from ? monthIndex(r.from) : -Infinity;
@@ -507,11 +508,15 @@ export const run = (q: Query, rows: WorkRow[]): WorkRow[] => {
 };
 
 // ---------- completion ----------
+// in the order they should win: the first match is the one suggested, so the two-word forms come
+// before their first word, and DESCRIBE (only valid on its own) comes after DESC
 const COMPLETE_WORDS = [
-  ...[...KEYWORDS].filter((k) => k !== "DESC" && k !== "ASC").concat(["ASC", "DESC", "COUNT(*)", "GROUP BY", "ORDER BY", "IS NULL"]),
+  "ORDER BY", "GROUP BY", "COUNT(*)", "IS NULL",
+  ...[...KEYWORDS].filter((k) => !["ORDER", "BY", "GROUP", "COUNT", "DESCRIBE"].includes(k)),
   ...COLUMNS,
   "amey.work",
   "active_in(",
+  "DESCRIBE",
 ];
 
 /** What the text before the caret could complete to: a keyword, column or table outside quotes,

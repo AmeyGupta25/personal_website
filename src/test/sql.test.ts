@@ -91,6 +91,13 @@ describe("completion", () => {
     expect(inQuote).toMatchObject({ from: 7, quoted: true });
     expect(inQuote.options).toEqual(["Python"]);
     expect(complete("SELECT n", 8, []).options).toEqual([]);
+    // the first match is the one shown faded, so it must be the right word
+    const first = (sql: string) => complete(sql, sql.length, [], { prefixOnly: true }).options[0];
+    expect(first("SELECT * FROM amey.work ORDER BY started DES")).toBe("DESC");
+    expect(first("SELECT skills, COUNT(*) FROM amey.work GROU")).toBe("GROUP BY");
+    expect(first("SELECT * FROM amey.work ORDE")).toBe("ORDER BY");
+    expect(first("SELECT COU")).toBe("COUNT(*)");
+    expect(first("DESCR")).toBe("DESCRIBE");
     // prefix-only: only what can be shown as the rest of the typed word
     expect(complete("WHERE 'sql", 10, ["SQLAlchemy", "PostgreSQL", "MySQL"], { prefixOnly: true }).options).toEqual(["SQLAlchemy"]);
   });
